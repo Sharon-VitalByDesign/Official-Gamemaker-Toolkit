@@ -125,6 +125,7 @@ const buildSynthesizedLocalConcepts = (topic, grade, selectedLensDetails, regene
   const secondaryLabel = lensLabel(secondary).toLowerCase()
   const lensProvocations = selectedLensDetails.map(lens => lens.provocation).filter(Boolean)
   const combinedExample = selectedLensDetails.map(lens => lens.example).filter(Boolean).join(' ')
+  const secondaryExample = selectedLensDetails[1]?.example || selectedLensDetails[0]?.example || combinedExample
   const resonanceTag = resonanceNote ? ` The teacher wants the next round to lean toward: ${resonanceNote}.` : ''
 
   return [
@@ -139,10 +140,10 @@ const buildSynthesizedLocalConcepts = (topic, grade, selectedLensDetails, regene
     {
       id: `${primary}-synth-2`,
       name: names[1],
-      tension: `${learners} enter the system from different positions, but a ${secondaryLabel} shift means no single viewpoint, role, or resource stream is enough to understand what should happen next. The arena keeps moving as each group acts on partial information.${resonanceTag}`,
+      tension: `${learners} enter the system from different positions, but a ${secondaryLabel} shift means no single viewpoint, role, or resource stream is enough to understand what should happen next. ${secondaryExample ? `${secondaryExample} ` : ''}The arena keeps moving as each group acts on partial information and forces consequences onto everyone else.${resonanceTag}`,
       roles: resonanceNote ? ['Interdependent role holders', 'Negotiators', 'Signal carriers'] : richRolesFor(secondary, topic),
-      action: resonanceNote ? `Trade incomplete information, rely on one another’s signals, and revise decisions as the system responds. In ${topic || 'this arena'}, every group sees only part of the pattern at first, so collaboration is not decorative—it is the only way forward.` : `Compare perspectives, exchange incomplete information, and revise decisions as the system pushes back on their first assumptions. Learners have to test what each role can see, what each role is hiding, and which choices become possible only when information moves across the system.`,
-      rationale: `This arena creates thinking because learners cannot solve it privately or passively. They have to reconcile perspective, sequence, and consequence in real time, which makes judgment visible instead of hidden. The design forces them to notice how each role changes the meaning of the same content.`,
+      action: resonanceNote ? `Trade incomplete information, rely on one another’s signals, and revise decisions as the system responds. In ${topic || 'this arena'}, every group sees only part of the pattern at first, so collaboration is not decorative—it is the only way forward. ${secondaryExample}`.trim() : `Compare perspectives, exchange incomplete information, and revise decisions as the system pushes back on their first assumptions. Learners have to test what each role can see, what each role is hiding, and which choices become possible only when information moves across the system. ${secondaryExample}`.trim(),
+      rationale: `${focus} and ${lensLabel(secondary)} keep this arena from flattening into recall. Learners cannot solve it privately or passively; they have to reconcile perspective, sequence, and consequence in real time. The design makes judgment visible by forcing them to notice how roles, missing information, and shifting conditions change what becomes possible next.`,
     },
   ].map(concept => ({ ...concept, id: concept.id || conceptIdFromName(concept.name) }))
 }
@@ -311,13 +312,14 @@ export default function ArenaVisioning({ state, setState, onComplete }) {
     const selectedInCurrentBatch = currentBatch?.concepts?.some(concept => concept.id === selectedConceptId)
     update({ concepts: currentBatch?.concepts || [], regeneratePrompt })
     regeneratePrompt ? setRegenerating(true) : setConceptLoading(true)
-    const data = await request('concepts', context, fallback, { silentFallback: true, hardFailureMessage: "The arena didn't take shape this time. Try adjusting your lenses and generating again." })
+    const result = await request('concepts', context, fallback, { silentFallback: true, hardFailureMessage: "The arena didn't take shape this time. Try adjusting your lenses and generating again.", withMeta: true })
     const requestStamp = Date.now()
-    const normalizedConcepts = data.concepts.slice(0, 2).map((concept, index) => normalizeConcept({ ...concept, id: `${concept?.id || conceptIdFromName(concept?.name) || 'synthesized'}-${requestStamp}-${index + 1}` }, `synthesized-${requestStamp}-${index + 1}`))
+    const normalizedConcepts = result.data.concepts.slice(0, 2).map((concept, index) => normalizeConcept({ ...concept, id: `${concept?.id || conceptIdFromName(concept?.name) || 'synthesized'}-${requestStamp}-${index + 1}` }, `synthesized-${requestStamp}-${index + 1}`))
     const nextBatch = {
       id: regeneratePrompt ? currentBatch?.id || `batch-${Date.now()}` : `batch-${Date.now()}`,
       lensIds: selectedLensDetails.map(item => item.id),
       lensNames,
+      source: result.source,
       regeneratePrompt,
       concepts: regeneratePrompt ? [...(currentBatch?.concepts || []), ...normalizedConcepts] : normalizedConcepts,
     }
