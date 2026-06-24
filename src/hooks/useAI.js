@@ -9,12 +9,16 @@ export function useAI(sessionId) {
   const countKey = `${sessionId}_ai_requests`
 
   const request = useCallback(async (type, context, fallback, options = {}) => {
-    const { silentFallback = false, hardFailureMessage = '' } = options
+    const { silentFallback = false, hardFailureMessage = '', withMeta = false } = options
     const parsedCount = Number(safeGetItem(countKey))
     const count = Number.isFinite(parsedCount) && parsedCount >= 0 ? parsedCount : 0
+    const finalize = (data, source) => {
+      const sanitized = sanitizeGeneratedText(data, context?.gradeLevel)
+      return withMeta ? { data: sanitized, source } : sanitized
+    }
     if (count >= 15) {
       setError('Your control room has reached its session limit. Your PDF has everything you need, Gamemaker.')
-      return fallback
+      return finalize(fallback, 'rate-limit')
     }
     setLoading(true); setError('')
     for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -25,13 +29,13 @@ export function useAI(sessionId) {
         if (!validators[type]?.(body.data)) throw new Error('The response did not match its contract')
         safeSetItem(countKey, String(count + 1))
         setLoading(false)
-        return sanitizeGeneratedText(body.data, context?.gradeLevel)
+        return finalize(body.data, 'ai')
       } catch (requestError) {
         if (attempt === 1 && !silentFallback && hardFailureMessage) setError(hardFailureMessage)
       }
     }
     setLoading(false)
-    return sanitizeGeneratedText(fallback, context?.gradeLevel)
+    return finalize(fallback, 'fallback')
   }, [countKey])
 
   return { request, loading, error }

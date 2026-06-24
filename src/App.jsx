@@ -10,8 +10,9 @@ import { formatGradeDescriptor } from './utils/grades'
 
 const controls = ['SHAPE', 'CHALLENGE', 'EMPOWER', 'SCOREBOARD']
 const levels = ['MINIMAL', 'GUARDED', 'BALANCED', 'HIGH', 'MAX']
+const conceptFields = ['id', 'name', 'tension', 'action', 'rationale']
 const blank = () => ({
-  id: `${SESSION_PREFIX}${Date.now()}`, createdAt: Date.now(), updatedAt: Date.now(), stage: 1, visionStep: 1, topic: '', grade: '', standards: [], selectedLenses: [], lensContent: [], concepts: [], selectedConcept: null,
+  id: `${SESSION_PREFIX}${Date.now()}`, createdAt: Date.now(), updatedAt: Date.now(), stage: 1, visionStep: 1, topic: '', grade: '', standards: [], selectedLenses: [], lensContent: [], lensContentSignature: '', lensContentFallback: false, concepts: [], lensSpecificSuggestions: [], selectedConcept: null, regeneratePrompt: '',
   framing: { audience: '', visible: '', visibleBehaviors: [], otherBehavior: '', duration: '', minutes: '', days: '', minutesPerDay: '', weeks: '', timesPerWeek: '', twist: '', twistNote: '' },
   controls: { SHAPE: 3, CHALLENGE: 3, EMPOWER: 3, SCOREBOARD: 3 },
   faders: Object.fromEntries(toolkit.faders.map(f => [f.id, 3])), selectedMoves: [], generatedMoves: {}, outputBrief: null
@@ -21,6 +22,20 @@ const clamp = (value, min, max, fallback) => Number.isFinite(value) ? Math.min(m
 const text = value => typeof value === 'string' ? value : ''
 const list = value => Array.isArray(value) ? value : []
 const object = value => value && typeof value === 'object' && !Array.isArray(value) ? value : null
+const sanitizeConcept = raw => {
+  const concept = object(raw)
+  if (!concept) return null
+  if (!conceptFields.every(field => typeof concept[field] === 'string')) return null
+  if (!Array.isArray(concept.roles) || !concept.roles.every(role => typeof role === 'string')) return null
+  return {
+    id: concept.id,
+    name: concept.name,
+    tension: concept.tension,
+    roles: concept.roles,
+    action: concept.action,
+    rationale: concept.rationale,
+  }
+}
 
 function sanitizeOutputBrief(raw) {
   const brief = object(raw)
@@ -64,9 +79,18 @@ function sanitizeSession(raw) {
     grade: text(source.grade),
     standards: list(source.standards).filter(item => typeof item === 'string'),
     selectedLenses: list(source.selectedLenses).filter(item => typeof item === 'string'),
-    lensContent: list(source.lensContent).filter(item => object(item)),
-    concepts: list(source.concepts).filter(item => object(item)),
-    selectedConcept: object(source.selectedConcept),
+    lensContent: list(source.lensContent).filter(item => object(item) && typeof item.id === 'string' && typeof item.provocation === 'string' && typeof item.example === 'string'),
+    lensContentSignature: text(source.lensContentSignature),
+    lensContentFallback: Boolean(source.lensContentFallback),
+    concepts: list(source.concepts).map(sanitizeConcept).filter(Boolean),
+    lensSpecificSuggestions: list(source.lensSpecificSuggestions).map(item => {
+      const entry = object(item)
+      if (!entry || typeof entry.lensId !== 'string' || typeof entry.lensName !== 'string') return null
+      const concept = sanitizeConcept(entry.concept)
+      return concept ? { lensId: entry.lensId, lensName: entry.lensName, concept } : null
+    }).filter(Boolean),
+    selectedConcept: sanitizeConcept(source.selectedConcept),
+    regeneratePrompt: text(source.regeneratePrompt),
     framing: {
       ...base.framing,
       audience: text(framing.audience),
