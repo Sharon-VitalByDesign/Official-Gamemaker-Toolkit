@@ -5,12 +5,12 @@ const prompts = {
   lenses: 'Generate topic- and grade-specific content for all five fixed lenses: tension, role, stakes, surprise, and constraint.',
   concepts: 'Generate exactly 2 richly developed synthesized arena concepts based on the selected lenses. Use the full text of each selected lens, including both its provocation and its for-example content, not just the lens names. Each concept must feel as fully developed as a lens-specific suggestion: specific central tension, vivid roles, concrete learner action, and a strong explanation of why the design creates thinking. The second concept must be as specific and fully developed as the first. These are conditions, not lesson plans or activities.',
   lensSpecificConcept: 'Generate exactly 1 named arena concept built specifically around the provided seed lens example. Use that example as the core seed, alongside the teacher topic and grade level. The result should feel clearly different from the synthesized set and should still be a condition, not a lesson plan or activity.',
-  moves: 'Generate 3-4 distinct implementations of the requested Design Move for this arena. Each must include a concrete action the teacher takes and must not repeat selected moves.',
+  moves: 'Generate 3-4 distinct implementations of the requested Design Move for this arena. Each must include a concrete action the teacher takes and must not repeat selected moves. The moves must feel materially different from one another in structure, not just in title.',
   outputBrief: 'Synthesize a Gamemaker Design Brief. Include a coherent Arena Concept and exactly five sections aligned to conditions, constraints, consequential learner choices, observable evidence, and teacher intervention points. Finish with a warm, sharp Gamemaker note of no more than five sentences.',
 }
 
 const modelFor = type => ['concepts', 'lensSpecificConcept', 'outputBrief'].includes(type) ? 'claude-sonnet-4-6' : 'claude-haiku-4-5'
-const maxTokensFor = type => type === 'outputBrief' ? 1800 : type === 'concepts' ? 2400 : type === 'lensSpecificConcept' ? 1200 : 900
+const maxTokensFor = type => type === 'outputBrief' ? 1800 : type === 'concepts' ? 2400 : type === 'lensSpecificConcept' ? 1200 : type === 'moves' ? 1200 : 900
 
 function parseJSON(value) {
   const cleaned = value.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
@@ -71,6 +71,25 @@ ADDITIONAL REQUIREMENTS FOR THIS CALL:
       }
 
       throw lastError || new Error('Concept generation failed.')
+    }
+    if (type === 'moves') {
+      const message = await anthropic.messages.create({
+        model: modelFor(type),
+        max_tokens: maxTokensFor(type),
+        system,
+        messages: [{
+          role: 'user',
+          content: `${prompt}
+
+ADDITIONAL REQUIREMENTS FOR THIS CALL:
+- Every move must match the requested move category, definition, and examples in the context.
+- Each move must have a distinct mechanism, not just a different title.
+- Avoid repeating the same implementation pattern across the set.
+- Keep the implementations concrete, teacher-facing, and specific to this arena.`,
+        }],
+      })
+      const raw = message.content.filter(item => item.type === 'text').map(item => item.text).join('\n')
+      return res.status(200).json({ data: parseJSON(raw) })
     }
     const message = await anthropic.messages.create({ model: modelFor(type), max_tokens: maxTokensFor(type), system, messages: [{ role: 'user', content: prompt }] })
     const raw = message.content.filter(item => item.type === 'text').map(item => item.text).join('\n')

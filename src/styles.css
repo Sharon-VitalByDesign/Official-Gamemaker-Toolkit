@@ -23,6 +23,7 @@
 .vision-stage-chip:not(:disabled):hover{border-color:#7a528d;transform:translateY(-1px)}
 .vision-stage-chip.active{border-color:var(--gold);color:#f4efe6;box-shadow:0 0 0 1px #c9a84c35,0 0 22px #c9a84c2e}
 .vision-stage-chip.done{color:#d9d1dc}
+.vision-stage-chip-static{cursor:default;opacity:1}
 .vision-stage-chip-index{font-size:22px;line-height:1}
 .vision-stage-chip-label{font:700 18px 'Barlow Condensed';letter-spacing:.02em}
 .vision-modal-backdrop{position:fixed;inset:0;z-index:80;background:#060607c7;display:grid;place-items:center;padding:24px}
