@@ -13,7 +13,7 @@ import { sanitizeArenaTitle } from '../../utils/titleCase'
 
 const allStandards = [...commonCore, ...ngss, ...ncss, ...iste]
 
-const observableOptions = [
+const defaultObservableOptions = [
   'Explaining cause and effect', 'Negotiating decisions', 'Defending choices with evidence',
   'Predicting consequences', 'Recognizing interdependence', 'Adapting when conditions change',
   'Revising an idea after feedback', 'Naming what information is still needed',
@@ -164,6 +164,61 @@ const normalizeConcept = (concept, fallbackId) => ({
   id: concept?.id || conceptIdFromName(concept?.name) || fallbackId,
 })
 
+function inferAudience(state) {
+  const source = `${state.selectedConcept?.tension || ''} ${state.selectedConcept?.action || ''} ${state.selectedConcept?.rationale || ''}`.toLowerCase()
+  if (/(museum|archive|public hearing|press conference|town hall|community forum|outside audience|school board|city council)/.test(source)) return 'A real outside audience'
+  if (/(jury|tribunal|simulated audience|invented audience|fictional audience|mock council)/.test(source)) return 'An invented outside audience'
+  return 'The class'
+}
+
+function inferDuration(state) {
+  const source = `${state.selectedConcept?.tension || ''} ${state.selectedConcept?.action || ''} ${state.selectedConcept?.rationale || ''}`.toLowerCase()
+  if (/(ongoing|over weeks|week after week|recurring|sustained)/.test(source)) return 'Ongoing'
+  if (/(days|sessions|rounds|multi-day|timeline|sequence|over time)/.test(source)) return 'Multi-day'
+  if (/(single session|one class|single class|one round|compressed)/.test(source)) return 'Single session'
+  return 'Multi-day'
+}
+
+function inferTwistProtocol(state) {
+  const source = `${state.selectedConcept?.tension || ''} ${state.selectedConcept?.action || ''} ${state.selectedConcept?.rationale || ''}`.toLowerCase()
+  if (state.selectedLenses.includes('surprise') || /surprise|unexpected|reveal|hidden|sudden/.test(source)) return 'Planned twist'
+  return 'Improvise'
+}
+
+function deriveObservableOptions(state) {
+  const topic = state.topic || 'the topic'
+  const action = state.selectedConcept?.action || ''
+  const rationale = state.selectedConcept?.rationale || ''
+  const roles = state.selectedConcept?.roles || []
+  const hasRoles = roles.length > 1
+
+  const options = [
+    `Defending choices with evidence about ${topic}`,
+    hasRoles ? `Negotiating across roles inside ${state.selectedConcept?.name || topic}` : `Weighing competing pressures inside ${state.selectedConcept?.name || topic}`,
+    /missing|partial|incomplete|hidden/.test(`${action} ${rationale}`.toLowerCase()) ? `Naming what information is still missing in ${topic}` : `Explaining what shifts the next move in ${topic}`,
+    /consequence|cost|trade-off|tradeoff/.test(`${action} ${rationale}`.toLowerCase()) ? `Tracing consequences before committing in ${topic}` : `Predicting what happens next in ${topic}`,
+    /revise|adapt|change|shift/.test(`${action} ${rationale}`.toLowerCase()) ? `Revising decisions when the terrain changes` : `Adapting when new conditions appear`,
+    /constraint|scarcity|limit|pressure/.test(`${state.selectedConcept?.tension || ''} ${action}`.toLowerCase()) ? `Explaining how constraints shape the next decision` : `Recognizing interdependence across the arena`,
+  ]
+
+  return [...new Set(options)].slice(0, 6)
+}
+
+function deriveCheckedBehaviors(state, options) {
+  const textSource = `${state.selectedConcept?.action || ''} ${state.selectedConcept?.rationale || ''}`.toLowerCase()
+  const matches = options.filter(option => {
+    const lower = option.toLowerCase()
+    if (lower.includes('evidence')) return /evidence|justify|defend/.test(textSource)
+    if (lower.includes('negotiating') || lower.includes('weighing')) return /negotiat|compare|competing|pressure|position/.test(textSource)
+    if (lower.includes('missing') || lower.includes('shifts')) return /missing|partial|hidden|signal|information/.test(textSource)
+    if (lower.includes('consequences') || lower.includes('predicting')) return /consequence|cost|outcome|next/.test(textSource)
+    if (lower.includes('revising') || lower.includes('adapting')) return /revis|adapt|change|shift/.test(textSource)
+    if (lower.includes('constraints') || lower.includes('interdependence')) return /constraint|scarcity|limit|interdepend/.test(textSource)
+    return false
+  })
+  return (matches.length ? matches : options.slice(0, 3)).slice(0, 4)
+}
+
 function StepHeader({ step, title, children }) {
   return <header className="vision-header"><div className="eyebrow">ARENA VISIONING / 0{step}</div><h1>{title}</h1>{children && <p className="lede">{children}</p>}</header>
 }
@@ -223,13 +278,43 @@ function ConceptStep({ state, update, next, back, onRegenerate, loadingConcepts,
 
   const submitRegeneration = () => onRegenerate(draft)
 
-  return <><StepHeader step={3} title="Many arenas. One choice.">These are conditions, not lesson plans. Choose the arena with the most productive tension.</StepHeader>{(loadingConcepts || regenerating) && <div className="concept-loading-card">{loadingMessage}</div>}{loadingConcepts && !synthesizedBatches.length ? null : <div className="concept-sections">{hasLensSpecific && <section className="concept-section"><div className="concept-section-header"><span>LENS-SPECIFIC SUGGESTIONS</span><p>These were shaped directly from the lens examples you chose to build around.</p></div><ConceptCards concepts={lensSpecific.map(item => item.concept)} selectedConcept={state.selectedConcept} choose={choose} prefix="lens-specific"/></section>}{synthesizedBatches.map((batch, index) => <ConceptRound key={batch.id} batch={batch} index={index} isLatest={index === synthesizedBatches.length - 1} selectedConcept={state.selectedConcept} choose={choose}/>)}</div>}<div className="regenerate-panel">{open && <label className="regenerate-field">What resonates from the suggestions above, or what direction would you like to take? <small>(Optional — the more you share, the better the next round.)</small><textarea value={draft} onChange={event => setDraft(event.target.value)} placeholder="Lean harder into public stakes. Make the roles more interdependent. Keep the concept but raise the ambiguity…"/></label>}<div className="regenerate-actions">{open && <button className="button ghost small" onClick={() => setOpen(false)} disabled={regenerating}>Cancel</button>}<button className="button ghost" onClick={() => open ? submitRegeneration() : setOpen(true)} disabled={loadingConcepts || regenerating || !synthesizedBatches.length}>{regenerating ? 'Regenerating…' : 'Regenerate Suggestions'}</button></div></div><div className="vision-actions"><button className="button ghost" onClick={back}>← Try different lenses</button><button className="button" disabled={!state.selectedConcept} onClick={next}>Define This Arena →</button></div></>
+  return <><StepHeader step={3} title="Many arenas. One choice.">These are conditions, not lesson plans. Choose the arena with the most productive tension.</StepHeader>{(loadingConcepts || regenerating) && <div className="concept-loading-card">{loadingMessage}</div>}{loadingConcepts && !synthesizedBatches.length ? null : <div className="concept-sections">{hasLensSpecific && <section className="concept-section"><div className="concept-section-header"><span>LENS-SPECIFIC SUGGESTIONS</span><p>These were shaped directly from the lens examples you chose to build around.</p></div><ConceptCards concepts={lensSpecific.map(item => item.concept)} selectedConcept={state.selectedConcept} choose={choose} prefix="lens-specific"/></section>}{synthesizedBatches.map((batch, index) => <ConceptRound key={batch.id} batch={batch} index={index} isLatest={index === synthesizedBatches.length - 1} selectedConcept={state.selectedConcept} choose={choose}/>)}</div>}<div className="regenerate-panel"><div className="regenerate-actions"><button className="button ghost regenerate-disabled" disabled title="Regenerate suggestions coming soon.">Regenerate Suggestions <mark className="coming-soon-badge">COMING SOON</mark></button></div></div><div className="vision-actions"><button className="button ghost" onClick={back}>← Try different lenses</button><button className="button" disabled={!state.selectedConcept} onClick={next}>Define This Arena →</button></div></>
 }
 
 function DefineStep({ state, update, next, back }) {
   const framing = state.framing
+  const observableOptions = useMemo(() => state.selectedConcept ? deriveObservableOptions(state) : defaultObservableOptions, [state.selectedConcept, state.topic])
   const patch = changes => update({ framing: { ...framing, ...changes } })
   const toggleBehavior = value => patch({ visibleBehaviors: framing.visibleBehaviors.includes(value) ? framing.visibleBehaviors.filter(x => x !== value) : [...framing.visibleBehaviors, value] })
+  useEffect(() => {
+    if (!state.selectedConcept) return
+    const derivedAudience = inferAudience(state)
+    const derivedDuration = inferDuration(state)
+    const derivedTwist = inferTwistProtocol(state)
+    const derivedBehaviors = deriveCheckedBehaviors(state, observableOptions)
+    const nextFraming = { ...framing }
+    let changed = false
+
+    if (!nextFraming.audience) {
+      nextFraming.audience = derivedAudience
+      changed = true
+    }
+    if (!nextFraming.duration) {
+      nextFraming.duration = derivedDuration
+      changed = true
+    }
+    if (!nextFraming.twist) {
+      nextFraming.twist = derivedTwist
+      changed = true
+    }
+    if (!nextFraming.visibleBehaviors.length) {
+      nextFraming.visibleBehaviors = derivedBehaviors
+      changed = true
+    }
+
+    if (changed) update({ framing: nextFraming })
+  }, [state.selectedConcept?.id, state.selectedLenses.join('::'), observableOptions.join('::')])
+
   return <><StepHeader step={4} title="Define your arena.">The terrain is already taking shape. Confirm the conditions your learners will live inside.</StepHeader><div className="definition-stack"><Fieldset label="Who is the audience?" value={framing.audience} options={['Just the teacher', 'The class', 'A real outside audience', 'An invented outside audience']} onChange={audience => patch({ audience })}/><fieldset className="behavior-field"><legend>What do you want to be able to SEE learners doing?</legend><div className="check-grid">{observableOptions.map(option => <label key={option} className={framing.visibleBehaviors.includes(option) ? 'checked' : ''}><input type="checkbox" checked={framing.visibleBehaviors.includes(option)} onChange={() => toggleBehavior(option)}/><span>{option}</span></label>)}</div><label className="other-field">OTHER<input value={framing.otherBehavior} onChange={e => patch({ otherBehavior: e.target.value })} placeholder="Name another observable behavior"/></label></fieldset><Fieldset label="How long is this arena?" value={framing.duration} options={['Single session', 'Multi-day', 'Ongoing', "I'm not sure"]} onChange={duration => patch({ duration })}/>{framing.duration !== "I'm not sure" && <div className="duration-details">{framing.duration === 'Single session' && <label>MINUTES<input type="number" min="1" value={framing.minutes} onChange={e => patch({ minutes: e.target.value })}/></label>}{framing.duration === 'Multi-day' && <><label>DAYS<input type="number" min="1" value={framing.days} onChange={e => patch({ days: e.target.value })}/></label><label>MINUTES PER DAY<input type="number" min="1" value={framing.minutesPerDay} onChange={e => patch({ minutesPerDay: e.target.value })}/></label></>}{framing.duration === 'Ongoing' && <><label>WEEKS<input type="number" min="1" value={framing.weeks} onChange={e => patch({ weeks: e.target.value })}/></label><label>TIMES PER WEEK<input type="number" min="1" value={framing.timesPerWeek} onChange={e => patch({ timesPerWeek: e.target.value })}/></label></>}</div>}<Fieldset label="Twist protocol" value={framing.twist} options={['Planned twist', 'Improvise', 'Both']} onChange={twist => patch({ twist })}/>{framing.twist !== 'Improvise' && <label className="other-field">DO YOU HAVE A TWIST IN MIND? <small>Optional</small><input value={framing.twistNote} onChange={e => patch({ twistNote: e.target.value })} placeholder="Describe it briefly—or leave this open"/></label>}{state.standards.length > 0 && !state.standards.includes('none') && <div className="reference-card"><span>THIS ARENA IS DESIGNED TO ADDRESS</span>{state.standards.map(id => allStandards.find(item => item.id === id)).filter(Boolean).map(item => <p key={item.id}><b>{item.code}</b>{item.title}</p>)}</div>}</div><div className="vision-actions"><button className="button ghost" onClick={back}>← Back</button><button className="button" disabled={!framing.audience || !framing.visibleBehaviors.length || !framing.duration || !framing.twist} onClick={next}>Review Your Arena →</button></div></>
 }
 
