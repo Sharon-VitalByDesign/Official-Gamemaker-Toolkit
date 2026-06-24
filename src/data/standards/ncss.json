@@ -1,0 +1,5 @@
+[
+  {"id":"ncss-culture","framework":"NCSS","subject":"Social Studies","gradeBand":"All","code":"NCSS I","title":"Culture","description":"Examine how cultures shape human experience and systems."},
+  {"id":"ncss-power","framework":"NCSS","subject":"Social Studies","gradeBand":"All","code":"NCSS VI","title":"Power, Authority, and Governance","description":"Analyze how power and authority are gained, used, and challenged."},
+  {"id":"ncss-civic","framework":"NCSS","subject":"Social Studies","gradeBand":"All","code":"NCSS X","title":"Civic Ideals and Practices","description":"Explore civic participation, public choices, and democratic ideals."}
+]

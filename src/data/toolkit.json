@@ -1,0 +1,48 @@
+{
+  "controls": [
+    {"id":"SHAPE","min":"Almost no fixed conditions: learners choose format, grouping, starting point, and materials.","max":"Everything is fixed before learners arrive: roles, materials, format, and entry point are engineered."},
+    {"id":"CHALLENGE","min":"No meaningful friction; tasks are straightforward and information is complete.","max":"Contradictions, missing information, shifting goals, or time pressure make easy answers impossible."},
+    {"id":"EMPOWER","min":"No meaningful learner choice; learners execute decisions made by the teacher or structure.","max":"Learner choices genuinely change what happens next for themselves and others."},
+    {"id":"SCOREBOARD","min":"No defined success criteria; learners do not know what winning looks like.","max":"Explicit success criteria are understood upfront and require genuine thinking rather than recall."}
+  ],
+  "designMoves": [
+    {"name":"Create Constraint","definition":"Narrow the field so choices matter.","examples":["limited materials","hard deadline"]},
+    {"name":"Create Visibility","definition":"Make thinking or consequences observable.","examples":["public rationale","shared decision log"]},
+    {"name":"Create Interdependence","definition":"Make learners rely on one another to move forward.","examples":["distributed evidence","linked roles"]},
+    {"name":"Create Agency","definition":"Give learners choices that alter what happens next.","examples":["set criteria","choose a route"]},
+    {"name":"Create Asymmetry","definition":"Distribute information, power, or resources unevenly.","examples":["role-specific clues","unequal resources"]},
+    {"name":"Create Urgency","definition":"Make timing part of the thinking problem.","examples":["decision window","expiring option"]},
+    {"name":"Create Uncertainty","definition":"Let learners act before the picture is complete.","examples":["sealed evidence","shifting conditions"]},
+    {"name":"Create Opportunity","definition":"Open a consequential possibility learners can choose to pursue.","examples":["wild card","unexpected alliance"]}
+  ],
+  "moves": [
+    {"id":"sh1","title":"The One-Sentence Rule","example":"Explain the system in one sentence before you may add detail.","control":"SHAPE","designMoves":["Create Constraint"],"description":"Use a tight form to reveal what learners believe is essential."},
+    {"id":"sh2","title":"Choose the Boundary","example":"Teams decide what is outside the scope—and defend the exclusion.","control":"SHAPE","designMoves":["Transfer Control","Force a Choice"],"description":"Let learners define the edges of the problem."},
+    {"id":"sh3","title":"The Missing Piece","example":"Remove one familiar resource and ask students to redesign around its absence.","control":"SHAPE","designMoves":["Create Constraint","Introduce Disruption"],"description":"Make the shape of the system visible through subtraction."},
+    {"id":"ch1","title":"Incomplete Brief","example":"Release only 70% of the evidence; learners list what they need and act anyway.","control":"CHALLENGE","designMoves":["Withhold Information"],"description":"Turn uncertainty into an explicit thinking condition."},
+    {"id":"ch2","title":"No Perfect Option","example":"Every available solution protects one value while compromising another.","control":"CHALLENGE","designMoves":["Force a Choice","Make It Matter"],"description":"Replace answer-getting with tradeoff reasoning."},
+    {"id":"ch3","title":"Midstream Dispatch","example":"Halfway through, a new source complicates the team’s strongest claim.","control":"CHALLENGE","designMoves":["Introduce Disruption","Withhold Information"],"description":"Test whether thinking can adapt without collapsing."},
+    {"id":"em1","title":"Learners Set the Rules","example":"Students draft three operating rules, then live with the consequences.","control":"EMPOWER","designMoves":["Transfer Control"],"description":"Move authority from procedure-following to system-making."},
+    {"id":"em2","title":"Role with Real Power","example":"Each stakeholder role controls one resource others must negotiate to access.","control":"EMPOWER","designMoves":["Shift Perspective","Transfer Control"],"description":"Make perspective structural rather than theatrical."},
+    {"id":"em3","title":"The Wild Card","example":"Each team earns one chance to rewrite a condition for everyone.","control":"EMPOWER","designMoves":["Transfer Control","Introduce Disruption"],"description":"Give learners bounded power to change the arena."},
+    {"id":"sc1","title":"Public Thinking Log","example":"Teams post each decision, evidence used, and what could change their mind.","control":"SCOREBOARD","designMoves":["Create Visibility"],"description":"Score the quality and evolution of thinking, not only the outcome."},
+    {"id":"sc2","title":"Audience Questions Count","example":"A real audience scores which unanswered question the work makes urgent.","control":"SCOREBOARD","designMoves":["Create Visibility","Make It Matter"],"description":"Let reception shape the definition of success."},
+    {"id":"sc3","title":"Revision Is the Win","example":"The strongest score goes to the team that changes its thinking most intelligently.","control":"SCOREBOARD","designMoves":["Create Visibility","Shift Perspective"],"description":"Reward responsiveness rather than stubborn certainty."}
+  ],
+  "faders": [
+    {"id":"time","label":"Time","primaryControl":"CHALLENGE","downDescription":"Spacious; as much time as needed","upDescription":"Compressed; decisions must land fast"},
+    {"id":"access","label":"Access","primaryControl":"CHALLENGE","downDescription":"Fully restricted; only what learners know","upDescription":"Fully open; tools, AI, peers, and resources available"},
+    {"id":"ambiguity","label":"Ambiguity","primaryControl":"SHAPE","downDescription":"Fully specified instructions and expectations","upDescription":"Deliberately open; learners must frame the problem"},
+    {"id":"information","label":"Information Completeness","primaryControl":"CHALLENGE","downDescription":"Everything needed is provided upfront","upDescription":"Significant information is missing or must be sought"},
+    {"id":"autonomy","label":"Autonomy","primaryControl":"EMPOWER","downDescription":"Teacher-directed sequence and approach","upDescription":"Self-directed sequence, approach, and process"},
+    {"id":"stakes","label":"Stakes / Visibility","primaryControl":"SCOREBOARD","downDescription":"Private and low-stakes","upDescription":"Public, consequential, and visible to a real audience"},
+    {"id":"collaboration","label":"Collaboration Mode","primaryControl":"EMPOWER","downDescription":"Fully solo","upDescription":"Fully interdependent"},
+    {"id":"feedback","label":"Feedback Timing","primaryControl":"SCOREBOARD","downDescription":"Feedback only after completion","upDescription":"Continuous feedback during the work"}
+  ],
+  "tensionRules": [
+    {"id":"heat","conditions":{"CHALLENGE":">3","EMPOWER":"<3"},"label":"Pressure without power","message":"High friction with little learner control can feel punitive. Raise EMPOWER or lower CHALLENGE.","severity":"red"},
+    {"id":"anchor","conditions":{"EMPOWER":">3","SCOREBOARD":"<3"},"label":"Agency without anchor","message":"Learners can change the arena, but success is hard to read. Clarify the SCOREBOARD.","severity":"amber"},
+    {"id":"terrain","conditions":{"SHAPE":"<3","CHALLENGE":">3"},"label":"Open terrain, high stakes","message":"This can create powerful thinking if it is intentional. Make sure learners can read the purpose of the openness.","severity":"amber"},
+    {"id":"neutral","conditions":{"SHAPE":"3","CHALLENGE":"3","EMPOWER":"3","SCOREBOARD":"3"},"label":"Everything balanced","message":"Nothing is wrong—but no dial is doing distinctive design work yet. Is that intentional?","severity":"amber"}
+  ]
+}

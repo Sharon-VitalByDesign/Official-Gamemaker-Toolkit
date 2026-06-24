@@ -1,0 +1,7 @@
+[
+  {"id":"tension","name":"The Tension Lens","emoji":"🔥","question":"What is actually in conflict here—and what changes when learners must navigate that conflict from inside the system?"},
+  {"id":"role","name":"The Role Lens","emoji":"👥","question":"Who or what has a stake here—and what becomes visible when learners inhabit those positions?"},
+  {"id":"stakes","name":"The Stakes Lens","emoji":"🎯","question":"What decision would make this knowledge useful rather than merely required?"},
+  {"id":"surprise","name":"The Surprise Lens","emoji":"⚡","question":"What does ordinary instruction flatten, skip, or make too predictable?"},
+  {"id":"constraint","name":"The Constraint Lens","emoji":"🔩","question":"What limitation, scarcity, or rule would force more careful thinking?"}
+]

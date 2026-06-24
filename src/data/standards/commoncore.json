@@ -1,0 +1,5 @@
+[
+  {"id":"ccss-ela-evidence","framework":"Common Core","subject":"ELA","gradeBand":"6-8","code":"CCSS.ELA-LITERACY.RI.6-8.1","title":"Cite textual evidence","description":"Use relevant evidence to support analysis of informational text."},
+  {"id":"ccss-ela-argument","framework":"Common Core","subject":"ELA","gradeBand":"9-12","code":"CCSS.ELA-LITERACY.W.9-12.1","title":"Write arguments","description":"Support claims with valid reasoning and relevant evidence."},
+  {"id":"ccss-math-practice3","framework":"Common Core","subject":"Math","gradeBand":"3-5","code":"CCSS.MATH.PRACTICE.MP3","title":"Construct arguments","description":"Construct viable arguments and critique the reasoning of others."}
+]

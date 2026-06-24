@@ -1,0 +1,6 @@
+[
+  {"id":"ngss-k2-engineering","framework":"NGSS","subject":"Science","gradeBand":"K-2","code":"K-2-ETS1-1","title":"Define a design problem","description":"Ask questions, make observations, and gather information to define a problem."},
+  {"id":"ngss-35-ecosystems","framework":"NGSS","subject":"Science","gradeBand":"3-5","code":"5-LS2-1","title":"Matter in ecosystems","description":"Develop a model describing movement of matter among organisms and the environment."},
+  {"id":"ngss-ms-evidence","framework":"NGSS","subject":"Science","gradeBand":"6-8","code":"MS-LS2-4","title":"Ecosystem interactions","description":"Construct an evidence-based argument about changes to an ecosystem."},
+  {"id":"ngss-hs-design","framework":"NGSS","subject":"Science","gradeBand":"9-12","code":"HS-ETS1-3","title":"Evaluate solutions","description":"Evaluate a solution using prioritized criteria and trade-offs."}
+]

@@ -1,0 +1,8 @@
+[
+  {"id":"iste-learner","framework":"ISTE","subject":"Digital Learning","gradeBand":"All","code":"ISTE 1.1","title":"Empowered Learner","description":"Use technology to set goals, pursue learning strategies, and reflect on outcomes."},
+  {"id":"iste-citizen","framework":"ISTE","subject":"Digital Learning","gradeBand":"All","code":"ISTE 1.2","title":"Digital Citizen","description":"Act safely, legally, and ethically in an interconnected digital world."},
+  {"id":"iste-designer","framework":"ISTE","subject":"Digital Learning","gradeBand":"All","code":"ISTE 1.4","title":"Innovative Designer","description":"Use a deliberate design process to solve authentic problems."},
+  {"id":"iste-thinker","framework":"ISTE","subject":"Digital Learning","gradeBand":"All","code":"ISTE 1.5","title":"Computational Thinker","description":"Develop and test solutions using data and algorithmic thinking."},
+  {"id":"iste-communicator","framework":"ISTE","subject":"Digital Learning","gradeBand":"All","code":"ISTE 1.6","title":"Creative Communicator","description":"Communicate clearly and creatively using appropriate platforms and formats."},
+  {"id":"iste-collaborator","framework":"ISTE","subject":"Digital Learning","gradeBand":"All","code":"ISTE 1.7","title":"Global Collaborator","description":"Use digital tools to broaden perspectives and work effectively with others."}
+]
