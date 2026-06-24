@@ -22,9 +22,19 @@ export function buildArenaContext(state) {
 
 export function buildOutputBriefContext(state) {
   const lensMap = new Map((state.lensContent || []).map(item => [item.id, item]))
+  const generatedMoveMap = new Map(Object.values(state.generatedMoves || {}).flat().map(move => [move.id, move]))
   const selectedLensDetails = (state.selectedLenses || []).map(id => {
     const details = lensMap.get(id)
     return details ? { id: details.id, provocation: details.provocation, example: details.example } : { id }
+  })
+  const selectedMoveDetails = (state.selectedMoves || []).map(id => {
+    const move = generatedMoveMap.get(id)
+    return move ? {
+      id: move.id,
+      title: move.title,
+      description: move.description,
+      implementation: move.implementation,
+    } : { id }
   })
 
   return {
@@ -43,6 +53,7 @@ export function buildOutputBriefContext(state) {
     dialSettings: state.controls,
     faderSettings: state.faders,
     selectedMoves: state.selectedMoves,
+    selectedMoveDetails,
     standards: state.standards,
   }
 }

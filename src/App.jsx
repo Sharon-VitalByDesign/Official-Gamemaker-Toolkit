@@ -54,13 +54,25 @@ function sanitizeOutputBrief(raw) {
   const nextSections = {}
   for (const key of ['conditions', 'constraints', 'choices', 'evidence', 'interventions']) {
     if (typeof sections[key] !== 'string') return null
-    nextSections[key] = sanitizeGeneratedText(sections[key])
+    nextSections[key] = sections[key]
   }
   if (typeof brief.arenaConcept !== 'string' || typeof brief.gamemakersNote !== 'string') return null
   return {
-    arenaConcept: sanitizeGeneratedText(brief.arenaConcept),
+    arenaConcept: brief.arenaConcept,
     sections: nextSections,
-    gamemakersNote: sanitizeGeneratedText(brief.gamemakersNote),
+    gamemakersNote: brief.gamemakersNote,
+  }
+}
+
+function sanitizeBriefForRender(state, brief) {
+  const safeBrief = sanitizeOutputBrief(brief)
+  if (!safeBrief) return null
+  const namedPhrases = [state.topic, state.selectedConcept?.name].filter(Boolean)
+
+  return {
+    arenaConcept: sanitizeGeneratedText(safeBrief.arenaConcept, { namedPhrases }),
+    sections: Object.fromEntries(Object.entries(safeBrief.sections).map(([key, value]) => [key, sanitizeGeneratedText(value, { namedPhrases })])),
+    gamemakersNote: sanitizeGeneratedText(safeBrief.gamemakersNote, { namedPhrases }),
   }
 }
 
@@ -457,11 +469,20 @@ function localOutputBrief(state) {
   const dialReading = controls.map(name => `${name} is ${levels[state.controls[name]-1].toLowerCase()} (${state.controls[name]}/5)`).join('; ')
   const behaviors = [...state.framing.visibleBehaviors, state.framing.otherBehavior].filter(Boolean).join(', ')
   const tension = activeTensions(state)[0]
-  return sanitizeOutputBrief({
-    arenaConcept: `${state.selectedConcept?.name || state.topic} places ${formatGradeDescriptor(state.grade)} inside ${state.selectedConcept?.tension || 'a consequential system'}. Rather than receiving the content from outside, they ${state.selectedConcept?.action?.toLowerCase() || 'make and defend choices that alter the arena'}.\n\nThe design makes knowledge useful because the arena responds to learner judgment. ${state.selectedConcept?.rationale || 'The conditions make recall insufficient and visible thinking necessary.'}`,
+  const conceptName = state.selectedConcept?.name || state.topic
+  const gradeDescriptor = formatGradeDescriptor(state.grade)
+  const roleLine = (state.selectedConcept?.roles || ['active decision makers']).join(', ')
+  const actionLine = state.selectedConcept?.action || 'make and defend choices that alter the arena'
+  const rationaleLine = state.selectedConcept?.rationale || 'The conditions make recall insufficient and visible thinking necessary.'
+  const moveLines = chosen.length
+    ? chosen.map(move => `${move.title} — ${move.implementation}`).join(' ')
+    : 'No specific moves have been selected yet. Return to the Control Room and choose at least one Design Move to sharpen the constraints in this arena.'
+
+  return sanitizeBriefForRender(state, {
+    arenaConcept: `${conceptName} drops ${gradeDescriptor} into a living system where they cannot stay outside the problem and simply describe it. Learners enter as ${roleLine}, and the arena asks them to move from inside the tension rather than watch it from a safe distance.\n\nAs the conditions tighten, they must ${actionLine.charAt(0).toLowerCase()}${actionLine.slice(1)}. ${rationaleLine}`,
     sections: {
       conditions: `Learners enter as ${(state.selectedConcept?.roles || ['active decision makers']).join(', ')}. ${dialReading}. Those settings define the terrain without implying that a higher value is inherently better.`,
-      constraints: chosen.length ? `The arena uses ${chosen.map(move => move.title).join(', ')}. In practice: ${chosen.map(move => move.implementation).join(' ')}` : `The initial constraint is the central tension itself: ${state.selectedConcept?.tension}. Add a Design Move before running the arena if learners need a sharper forcing condition.`,
+      constraints: moveLines,
       choices: `Learners must have a choice that changes the route, access, consequence, or options available to others. At EMPOWER ${state.controls.EMPOWER}/5 and Autonomy ${state.faders.autonomy}/5, protect the decisions that matter instead of offering cosmetic choice.`,
       evidence: `Look for ${behaviors || 'learners explaining, negotiating, revising, and adapting'}. The arena is working when those behaviors become necessary to move forward; turn a dial when compliance replaces judgment or uncertainty becomes paralysis.`,
       interventions: `Watch the first irreversible decision, the moment new information changes a strong position, and the point when consequences become visible. ${tension ? tension.message : 'Hold back while learners are productively navigating; intervene when the conditions obscure the thinking rather than provoke it.'} Twist protocol: ${state.framing.twist}.`,
@@ -475,13 +496,13 @@ function localOutputBrief(state) {
 }
 
 const pdfStyles=StyleSheet.create({page:{padding:0,fontFamily:'Helvetica',fontSize:10,color:'#29252b'},header:{backgroundColor:'#171119',color:'#fff',padding:'28 40 24'},brand:{fontSize:9,letterSpacing:2.2,color:'#d2ae55'},title:{fontSize:25,fontFamily:'Helvetica-Bold',marginTop:9},meta:{fontSize:9,color:'#b9aebe',marginTop:6},body:{padding:'24 40 34'},intro:{fontSize:11,lineHeight:1.55,marginBottom:12},section:{marginTop:14,borderTop:'1 solid #d9d1dc',paddingTop:9},h2:{fontSize:12,fontFamily:'Helvetica-Bold',color:'#683781',marginBottom:5},copy:{lineHeight:1.48},note:{backgroundColor:'#f1ebf4',padding:13,marginTop:18,lineHeight:1.5},noteLabel:{fontSize:8,fontFamily:'Helvetica-Bold',letterSpacing:1.5,color:'#683781'},footer:{position:'absolute',bottom:14,left:40,right:40,fontSize:7,color:'#817981',display:'flex',flexDirection:'row',justifyContent:'space-between'}})
-function ArenaPDF({state}){const brief=sanitizeOutputBrief(state.outputBrief)||localOutputBrief(state);return <Document><Page size="LETTER" style={pdfStyles.page}><View style={pdfStyles.header}><Text style={pdfStyles.brand}>THE GAMEMAKER'S TOOLKIT  ↗</Text><Text style={pdfStyles.title}>{state.selectedConcept?.name||'Gamemaker Design Brief'}</Text><Text style={pdfStyles.meta}>{state.grade} · {state.framing.audience} · {state.framing.duration}</Text></View><View style={pdfStyles.body}><Text style={pdfStyles.intro}>{brief.arenaConcept}</Text>{Object.entries(sectionLabels).map(([key,label])=><View style={pdfStyles.section} key={key}><Text style={pdfStyles.h2}>{label}</Text><Text style={pdfStyles.copy}>{brief.sections[key]}</Text></View>)}<View style={pdfStyles.note}><Text style={pdfStyles.noteLabel}>GAMEMAKER'S NOTE</Text><Text style={pdfStyles.copy}>{brief.gamemakersNote}</Text></View></View><View style={pdfStyles.footer}><Text>Framework developed by Sharon Matthews, Vital by Design</Text><Text>{new Date().toLocaleDateString()}</Text></View></Page></Document>}
+function ArenaPDF({state}){const brief=sanitizeBriefForRender(state,state.outputBrief)||localOutputBrief(state);return <Document><Page size="LETTER" style={pdfStyles.page}><View style={pdfStyles.header}><Text style={pdfStyles.brand}>THE GAMEMAKER'S TOOLKIT  ↗</Text><Text style={pdfStyles.title}>{state.selectedConcept?.name||'Gamemaker Design Brief'}</Text><Text style={pdfStyles.meta}>{state.grade} · {state.framing.audience} · {state.framing.duration}</Text></View><View style={pdfStyles.body}><Text style={pdfStyles.intro}>{brief.arenaConcept}</Text>{Object.entries(sectionLabels).map(([key,label])=><View style={pdfStyles.section} key={key}><Text style={pdfStyles.h2}>{label}</Text><Text style={pdfStyles.copy}>{brief.sections[key]}</Text></View>)}<View style={pdfStyles.note}><Text style={pdfStyles.noteLabel}>GAMEMAKER'S NOTE</Text><Text style={pdfStyles.copy}>{brief.gamemakersNote}</Text></View></View><View style={pdfStyles.footer}><Text>Framework developed by Sharon Matthews, Vital by Design</Text><Text>{new Date().toLocaleDateString()}</Text></View></Page></Document>}
 
 function Stage3({state,setState,onBack,onStartOver}) {
   const {request,loading,error}=useAI(state.id)
   const started=useRef(false)
-  useEffect(()=>{if(started.current||state.outputBrief)return;started.current=true;(async()=>{const brief=await request('outputBrief',buildOutputBriefContext(state),localOutputBrief(state),{hardFailureMessage:'The control room lost the signal. Try capturing your arena again.'});setState(s=>({...s,outputBrief:sanitizeOutputBrief(brief) || localOutputBrief(s)}))})()},[request,state,setState])
-  const brief=sanitizeOutputBrief(state.outputBrief)||localOutputBrief(state)
+  useEffect(()=>{if(started.current||state.outputBrief)return;started.current=true;(async()=>{const brief=await request('outputBrief',buildOutputBriefContext(state),localOutputBrief(state),{hardFailureMessage:'The control room lost the signal. Try capturing your arena again.'});setState(s=>({...s,outputBrief:sanitizeBriefForRender(s,brief) || localOutputBrief(s)}))})()},[request,state,setState])
+  const brief=sanitizeBriefForRender(state,state.outputBrief)||localOutputBrief(state)
   return <main className="summary shell"><div className="summary-top"><button className="back" onClick={onBack}>← Back to Dashboard</button><div className="eyebrow">ARENA CAPTURE / FINAL</div></div><h1>Capture<br/><em>the arena.</em></h1><p className="lede">A synthesized design brief—not a form dump, lesson plan, or worksheet.</p>{loading&&<div className="ai-card">The Gamemaker is synthesizing your design brief…</div>}{error&&<div className="ai-card">{error}</div>}<section className="summary-card"><div className="summary-title"><span>GAMEMAKER DESIGN BRIEF</span><h2>{state.selectedConcept?.name||state.topic}</h2><p>{gradeMetaLabel(state.grade)} · {state.framing.audience} · {state.framing.duration}</p></div><div className="brief-intro">{brief.arenaConcept.split('\n').map((paragraph,index)=><p key={index}>{paragraph}</p>)}</div><div className="north-star-sections">{Object.entries(sectionLabels).map(([key,label])=><article key={key}><span>{label.slice(0,2)}</span><div><h3>{label.slice(3)}</h3><p>{brief.sections[key]}</p></div></article>)}</div><div className="gamemaker-note"><span>GAMEMAKER'S NOTE</span><p>{brief.gamemakersNote}</p></div></section><div className="summary-actions"><PDFDownloadLink className="button" document={<ArenaPDF state={{...state,outputBrief:brief}}/>} fileName="gamemaker-arena-brief.pdf">{({loading:pdfLoading})=>pdfLoading?'Setting up your brief…':'Get Your Arena Brief ↓'}</PDFDownloadLink><button className="button ghost" onClick={onStartOver}>Build a New Arena</button></div></main>
 }
 

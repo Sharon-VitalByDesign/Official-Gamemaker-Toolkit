@@ -111,6 +111,30 @@ ADDITIONAL REQUIREMENTS FOR THIS CALL:
       const raw = message.content.filter(item => item.type === 'text').map(item => item.text).join('\n')
       return res.status(200).json({ data: parseJSON(raw) })
     }
+    if (type === 'outputBrief') {
+      const message = await anthropic.messages.create({
+        model: modelFor(type),
+        max_tokens: maxTokensFor(type),
+        system,
+        messages: [{
+          role: 'user',
+          content: `${prompt}
+
+ADDITIONAL REQUIREMENTS FOR THIS CALL:
+- Write the arena concept narrative as 2-3 fully formed, flowing paragraphs.
+- Do not concatenate fragments or paste the central tension description as a sentence opener.
+- The narrative must read like cohesive human prose, not stitched-together fields.
+- Every sentence must begin with a capital letter.
+- Do not repeat the same description twice.
+- Treat the context as provided once; do not echo or duplicate it.
+- For Section 2 (constraints), describe the specific design moves the teacher selected in plain "here is what you actually do" language.
+- If selectedMoveDetails is empty, Section 2 must say exactly: "No specific moves have been selected yet. Return to the Control Room and choose at least one Design Move to sharpen the constraints in this arena."
+- Under no circumstances should Section 2 say "The initial constraint is the central tension itself" or paste the central tension as a substitute for constraints.`,
+        }],
+      })
+      const raw = message.content.filter(item => item.type === 'text').map(item => item.text).join('\n')
+      return res.status(200).json({ data: parseJSON(raw) })
+    }
     const message = await anthropic.messages.create({ model: modelFor(type), max_tokens: maxTokensFor(type), system, messages: [{ role: 'user', content: prompt }] })
     const raw = message.content.filter(item => item.type === 'text').map(item => item.text).join('\n')
     return res.status(200).json({ data: parseJSON(raw) })

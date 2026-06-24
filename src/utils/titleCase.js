@@ -58,6 +58,22 @@ function capitalizeProperNouns(value) {
   return output
 }
 
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function capitalizeSentenceStarts(value) {
+  return value.replace(/(^|[.!?]\s+)([a-z])/g, (_, boundary, letter) => `${boundary}${letter.toUpperCase()}`)
+}
+
+function capitalizeNamedPhrases(value, phrases = []) {
+  return phrases.reduce((output, phrase) => {
+    const trimmed = typeof phrase === 'string' ? phrase.trim() : ''
+    if (!trimmed) return output
+    return output.replace(new RegExp(escapeRegex(trimmed), 'gi'), trimmed)
+  }, value)
+}
+
 function collapseRepeatedSentences(value) {
   const parts = value.match(/[^.!?]+[.!?]*/g)
   if (!parts) return value
@@ -76,15 +92,19 @@ function collapseRepeatedSentences(value) {
   return kept.join(' ').trim()
 }
 
-export function sanitizeGeneratedText(value) {
+export function sanitizeGeneratedText(value, options = {}) {
   if (typeof value !== 'string') return value
   const trimmed = value.trim().replace(/[ \t]+/g, ' ')
   if (!trimmed) return ''
 
   const paragraphs = trimmed.split(/\n+/).map(paragraph => {
-    const withoutDoublePeriods = paragraph.replace(/\.{2,}/g, '.')
+    const withoutCommaSplice = paragraph.replace(/\.,\s*/g, '. ')
+    const withoutDoublePeriods = withoutCommaSplice.replace(/\.{2,}/g, '.')
     const deduped = collapseRepeatedSentences(withoutDoublePeriods)
-    return capitalizeProperNouns(deduped).replace(/\s+([,.;:!?])/g, '$1').trim()
+    const cappedSentences = capitalizeSentenceStarts(deduped)
+    const properNouns = capitalizeProperNouns(cappedSentences)
+    const namedPhrases = capitalizeNamedPhrases(properNouns, options.namedPhrases || [])
+    return namedPhrases.replace(/\s+([,.;:!?])/g, '$1').trim()
   }).filter(Boolean)
 
   return paragraphs.join('\n\n')
