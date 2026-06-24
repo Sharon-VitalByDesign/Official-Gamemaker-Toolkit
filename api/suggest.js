@@ -10,7 +10,7 @@ const prompts = {
 }
 
 const modelFor = type => ['concepts', 'lensSpecificConcept', 'outputBrief'].includes(type) ? 'claude-sonnet-4-6' : 'claude-haiku-4-5'
-const maxTokensFor = type => type === 'outputBrief' ? 1800 : type === 'concepts' ? 1600 : type === 'lensSpecificConcept' ? 1000 : 900
+const maxTokensFor = type => type === 'outputBrief' ? 1800 : type === 'concepts' ? 1800 : type === 'lensSpecificConcept' ? 1200 : 900
 
 function parseJSON(value) {
   const cleaned = value.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')

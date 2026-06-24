@@ -32,6 +32,12 @@ const downstreamVisionReset = {
 
 const titleCase = value => value.charAt(0).toUpperCase() + value.slice(1)
 const lensLabel = id => lenses.find(lens => lens.id === id)?.name.replace('The ', '').replace(' Lens', '') || titleCase(id)
+const arenaLoadingMessages = [
+  'The Gamemaker is thinking…',
+  'Designing the terrain…',
+  'Shaping the conditions…',
+  'The arena is taking form…',
+]
 const formatLensCombination = lensNames => {
   if (!lensNames.length) return 'your selected lenses'
   if (lensNames.length === 1) return lensNames[0]
@@ -85,6 +91,18 @@ const buildSelectedLensDetails = (selectedLensIds, lensContent) => {
   })
 }
 
+const richRolesFor = (primaryId, topic) => {
+  const baseTopic = topic || 'the arena'
+  const options = {
+    tension: ['Primary decision makers', 'People affected by the choice', 'Observers tracking consequences'],
+    role: ['Role holders with unequal power', 'Negotiators across positions', 'Recorders of consequence'],
+    stakes: ['Decision makers', 'Stakeholders with something to lose', 'Audience living with the outcome'],
+    surprise: ['Actors inside the system', 'Those destabilized by the shift', 'Signal readers interpreting what changed'],
+    constraint: [`Resource managers in ${baseTopic}`, 'Participants working under limits', 'People forced to absorb the trade-off'],
+  }
+  return options[primaryId] || ['Primary actors', 'Affected stakeholders', 'Signal readers']
+}
+
 const buildSynthesizedLocalConcepts = (topic, grade, selectedLensDetails, regeneratePrompt = '') => {
   const arena = topic || 'This arena'
   const learners = formatGradeDescriptor(grade)
@@ -122,17 +140,17 @@ const buildSynthesizedLocalConcepts = (topic, grade, selectedLensDetails, regene
       id: `${primary}-synth-2`,
       name: names[1],
       tension: `${learners} enter the system from different positions, but a ${secondaryLabel} shift means no single viewpoint, role, or resource stream is enough to understand what should happen next. The arena keeps moving as each group acts on partial information.${resonanceTag}`,
-      roles: resonanceNote ? ['Interdependent role holders', 'Negotiators', 'Signal carriers'] : ['Role holders', 'Negotiators', 'Recorders of consequence'],
-      action: resonanceNote ? 'Trade incomplete information, rely on one another’s signals, and revise decisions as the system responds.' : 'Compare perspectives, exchange incomplete information, and revise decisions as the system pushes back on their first assumptions.',
-      rationale: `This arena creates thinking because learners cannot solve it privately or passively. They have to reconcile perspective, sequence, and consequence in real time, which makes judgment visible instead of hidden.`,
+      roles: resonanceNote ? ['Interdependent role holders', 'Negotiators', 'Signal carriers'] : richRolesFor(secondary, topic),
+      action: resonanceNote ? `Trade incomplete information, rely on one another’s signals, and revise decisions as the system responds. In ${topic || 'this arena'}, every group sees only part of the pattern at first, so collaboration is not decorative—it is the only way forward.` : `Compare perspectives, exchange incomplete information, and revise decisions as the system pushes back on their first assumptions. Learners have to test what each role can see, what each role is hiding, and which choices become possible only when information moves across the system.`,
+      rationale: `This arena creates thinking because learners cannot solve it privately or passively. They have to reconcile perspective, sequence, and consequence in real time, which makes judgment visible instead of hidden. The design forces them to notice how each role changes the meaning of the same content.`,
     },
     {
       id: `${primary}-synth-3`,
       name: names[2],
       tension: `${learners} face a consequential choice under conditions shaped by ${selectedLensDetails.map(lens => lensLabel(lens.id).toLowerCase()).join(', ')}, so both hesitation and overconfidence carry a cost. What is missing matters as much as what is visible.${resonanceTag}`,
       roles: ['Investigators', 'Advisers', 'Public audience'],
-      action: resonanceNote ? 'Notice what is missing, commit to a recommendation that others must rely on, and respond when the incomplete picture shifts the terrain.' : 'Notice what is missing, commit to a recommendation others must act on, and adapt when new evidence changes what the arena demands.',
-      rationale: `${focus} keeps the arena from flattening into recall. Learners have to decide what counts as useful evidence, what can wait, and what must be acted on before certainty arrives.`,
+      action: resonanceNote ? `Notice what is missing, commit to a recommendation that others must rely on, and respond when the incomplete picture shifts the terrain. Learners act before certainty arrives, then have to defend why that was still the most responsible move.` : `Notice what is missing, commit to a recommendation others must act on, and adapt when new evidence changes what the arena demands. Their first move creates downstream consequences, so every later revision has to account for the reality they already set in motion.`,
+      rationale: `${focus} keeps the arena from flattening into recall. Learners have to decide what counts as useful evidence, what can wait, and what must be acted on before certainty arrives. Because the arena answers back, interpretation is no longer abstract—it changes what becomes possible next.`,
     },
   ].map(concept => ({ ...concept, id: concept.id || conceptIdFromName(concept.name) }))
 }
@@ -141,9 +159,9 @@ const buildLensSpecificLocalConcept = (topic, grade, lens) => ({
   id: `${lens.id}-specific`,
   name: `${topic || 'This arena'} Through ${lensLabel(lens.id)}`,
   tension: `${formatGradeDescriptor(grade)} must navigate the exact pressure inside this lens seed: ${lens.example}`,
-  roles: ['Primary actors', 'Those affected', 'Signal readers'],
-  action: 'Step into the seeded situation, make a consequential choice, and adjust when the implications become visible.',
-  rationale: `Because this concept is anchored directly to the ${lensLabel(lens.id).toLowerCase()} example, the content becomes something learners must navigate rather than merely describe.`,
+  roles: richRolesFor(lens.id, topic),
+  action: `Learners step directly into the seeded situation, take a consequential action from inside it, and then respond when the implications become visible to everyone else in the arena. Because the example is already specific, the work begins inside the tension instead of outside it.`,
+  rationale: `Because this concept is anchored directly to the ${lensLabel(lens.id).toLowerCase()} example, the content becomes something learners must navigate rather than merely describe. The arena is already doing interpretive work on them: it forces them to weigh consequence, act under pressure, and see how their choice reshapes the system around them.`,
 })
 
 const normalizeConcept = (concept, fallbackId) => ({
@@ -189,7 +207,18 @@ function ConceptCards({ concepts, selectedConcept, choose, prefix }) {
   return <div className="concept-grid">{concepts.map(concept => <article className={`concept-card ${selectedConcept?.id === concept.id ? 'selected' : ''}`} key={`${prefix}-${concept.id}`}><span>ARENA CONCEPT</span><h2>{concept.name}</h2><dl><div><dt>Central tension</dt><dd>{concept.tension}</dd></div><div><dt>Suggested roles</dt><dd>{concept.roles.join(' / ')}</dd></div><div><dt>What learners will do</dt><dd>{concept.action}</dd></div><div><dt>Why this creates thinking</dt><dd>{concept.rationale}</dd></div></dl><button className="button small" onClick={() => choose(concept)}>{selectedConcept?.id === concept.id ? 'Selected ✓' : 'Choose This Arena'}</button></article>)}</div>
 }
 
-function ConceptStep({ state, update, next, back, onRegenerate, loadingConcepts, regenerating }) {
+function ConceptRound({ batch, index, isLatest, selectedConcept, choose }) {
+  const [open, setOpen] = useState(true)
+  const roundLabel = `Round ${index + 1}: ${formatLensCombination(batch.lensNames?.length ? batch.lensNames : batch.lensIds.map(lensLabel))}`
+
+  useEffect(() => {
+    if (isLatest) setOpen(true)
+  }, [isLatest])
+
+  return <section className={`concept-section concept-round ${!isLatest ? 'collapsible' : ''}`}><div className="concept-section-header"><span>{index === 0 ? 'SYNTHESIZED ARENA SUGGESTIONS' : `SYNTHESIZED ARENA SUGGESTIONS / ROUND ${index + 1}`}</span><div className="round-heading-row"><h3>{roundLabel}</h3>{!isLatest && <button type="button" className="round-toggle" onClick={() => setOpen(value => !value)}>{open ? 'Hide round' : 'Show round'}</button>}</div><p>These combine your selected lenses ({formatLensCombination(batch.lensNames?.length ? batch.lensNames : batch.lensIds.map(lensLabel))}) into three broader arena directions.</p></div>{open && <ConceptCards concepts={batch.concepts} selectedConcept={selectedConcept} choose={choose} prefix={batch.id}/>}</section>
+}
+
+function ConceptStep({ state, update, next, back, onRegenerate, loadingConcepts, regenerating, loadingMessage }) {
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState(state.regeneratePrompt || '')
   const choose = concept => update({ selectedConcept: concept })
@@ -203,7 +232,7 @@ function ConceptStep({ state, update, next, back, onRegenerate, loadingConcepts,
 
   const submitRegeneration = () => onRegenerate(draft)
 
-  return <><StepHeader step={3} title="Many arenas. One choice.">These are conditions, not lesson plans. Choose the arena with the most productive tension.</StepHeader>{loadingConcepts && !synthesizedBatches.length ? <div className="concept-loading-card">The Gamemaker is thinking…</div> : <div className="concept-sections">{hasLensSpecific && <section className="concept-section"><div className="concept-section-header"><span>LENS-SPECIFIC SUGGESTIONS</span><p>These were shaped directly from the lens examples you chose to build around.</p></div><ConceptCards concepts={lensSpecific.map(item => item.concept)} selectedConcept={state.selectedConcept} choose={choose} prefix="lens-specific"/></section>}{synthesizedBatches.map((batch, index) => <section className="concept-section" key={batch.id}><div className="concept-section-header"><span>{index === 0 ? 'SYNTHESIZED ARENA SUGGESTIONS' : `SYNTHESIZED ARENA SUGGESTIONS / ROUND ${index + 1}`}</span><p>These combine your selected lenses ({formatLensCombination(batch.lensNames?.length ? batch.lensNames : batch.lensIds.map(lensLabel))}) into three broader arena directions.</p></div><ConceptCards concepts={batch.concepts} selectedConcept={state.selectedConcept} choose={choose} prefix={batch.id}/></section>)}</div>}<div className="regenerate-panel">{open && <label className="regenerate-field">What resonates from the suggestions above, or what direction would you like to take? <small>(Optional — the more you share, the better the next round.)</small><textarea value={draft} onChange={event => setDraft(event.target.value)} placeholder="Lean harder into public stakes. Make the roles more interdependent. Keep the concept but raise the ambiguity…"/></label>}<div className="regenerate-actions">{open && <button className="button ghost small" onClick={() => setOpen(false)} disabled={regenerating}>Cancel</button>}<button className="button ghost" onClick={() => open ? submitRegeneration() : setOpen(true)} disabled={loadingConcepts || regenerating || !synthesizedBatches.length}>{regenerating ? 'The Gamemaker is rethinking the arena…' : 'Regenerate Suggestions'}</button></div></div><div className="vision-actions"><button className="button ghost" onClick={back}>← Try different lenses</button><button className="button" disabled={!state.selectedConcept} onClick={next}>Define This Arena →</button></div></>
+  return <><StepHeader step={3} title="Many arenas. One choice.">These are conditions, not lesson plans. Choose the arena with the most productive tension.</StepHeader>{(loadingConcepts || regenerating) && <div className="concept-loading-card">{loadingMessage}</div>}{loadingConcepts && !synthesizedBatches.length ? null : <div className="concept-sections">{hasLensSpecific && <section className="concept-section"><div className="concept-section-header"><span>LENS-SPECIFIC SUGGESTIONS</span><p>These were shaped directly from the lens examples you chose to build around.</p></div><ConceptCards concepts={lensSpecific.map(item => item.concept)} selectedConcept={state.selectedConcept} choose={choose} prefix="lens-specific"/></section>}{synthesizedBatches.map((batch, index) => <ConceptRound key={batch.id} batch={batch} index={index} isLatest={index === synthesizedBatches.length - 1} selectedConcept={state.selectedConcept} choose={choose}/>)}</div>}<div className="regenerate-panel">{open && <label className="regenerate-field">What resonates from the suggestions above, or what direction would you like to take? <small>(Optional — the more you share, the better the next round.)</small><textarea value={draft} onChange={event => setDraft(event.target.value)} placeholder="Lean harder into public stakes. Make the roles more interdependent. Keep the concept but raise the ambiguity…"/></label>}<div className="regenerate-actions">{open && <button className="button ghost small" onClick={() => setOpen(false)} disabled={regenerating}>Cancel</button>}<button className="button ghost" onClick={() => open ? submitRegeneration() : setOpen(true)} disabled={loadingConcepts || regenerating || !synthesizedBatches.length}>{regenerating ? 'Regenerating…' : 'Regenerate Suggestions'}</button></div></div><div className="vision-actions"><button className="button ghost" onClick={back}>← Try different lenses</button><button className="button" disabled={!state.selectedConcept} onClick={next}>Define This Arena →</button></div></>
 }
 
 function DefineStep({ state, update, next, back }) {
@@ -229,12 +258,24 @@ export default function ArenaVisioning({ state, setState, onComplete }) {
   const [conceptLoading, setConceptLoading] = useState(false)
   const [regenerating, setRegenerating] = useState(false)
   const [buildingLensId, setBuildingLensId] = useState('')
+  const [loadingMessageIndex, setLoadingMessageIndex] = useState(0)
   const update = changes => setState(current => ({ ...current, ...changes }))
   const go = visionStep => update({ visionStep })
   const lensSignature = `${state.topic.trim()}::${state.grade}`
 
   const visibleLensContent = useMemo(() => state.lensContentSignature === lensSignature ? state.lensContent : [], [state.lensContent, state.lensContentSignature, lensSignature])
   const synthesizedBatches = state.synthesizedBatches || []
+
+  useEffect(() => {
+    if (!(conceptLoading || regenerating)) {
+      setLoadingMessageIndex(0)
+      return
+    }
+    const interval = window.setInterval(() => {
+      setLoadingMessageIndex(index => (index + 1) % arenaLoadingMessages.length)
+    }, 2400)
+    return () => window.clearInterval(interval)
+  }, [conceptLoading, regenerating])
 
   useEffect(() => {
     if (step !== 2 || !state.topic.trim() || !state.grade) return
@@ -326,5 +367,5 @@ export default function ArenaVisioning({ state, setState, onComplete }) {
     setBuildingLensId('')
   }
 
-  return <main className="visioning shell"><StepNav step={step}/>{conceptLoading && step === 3 && <div className="ai-card">The Gamemaker is thinking…</div>}{regenerating && <div className="ai-card">The Gamemaker is rethinking the arena…</div>}{error && <div className="ai-card">{error}</div>}<motion.div key={step} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .25 }}>{step === 1 && <SeedStep state={state} update={update} next={() => go(2)}/>} {step === 2 && <LensStep state={state} update={update} back={() => go(1)} onGenerate={() => generateSynthesizedConcepts('')} onBuildAround={buildAroundLens} loadingExamples={lensLoading} buildingLensId={buildingLensId} generatingConcepts={conceptLoading || regenerating} currentSignature={lensSignature}/>} {step === 3 && <ConceptStep state={state} update={update} next={() => go(4)} back={() => go(2)} onRegenerate={generateSynthesizedConcepts} loadingConcepts={conceptLoading} regenerating={regenerating}/>} {step === 4 && <DefineStep state={state} update={update} next={() => go(5)} back={() => go(3)}/>} {step === 5 && <ConfirmStep state={state} back={() => go(4)} enter={onComplete}/>}</motion.div></main>
+  return <main className="visioning shell"><StepNav step={step}/>{error && <div className="ai-card">{error}</div>}<motion.div key={step} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .25 }}>{step === 1 && <SeedStep state={state} update={update} next={() => go(2)}/>} {step === 2 && <LensStep state={state} update={update} back={() => go(1)} onGenerate={() => generateSynthesizedConcepts('')} onBuildAround={buildAroundLens} loadingExamples={lensLoading} buildingLensId={buildingLensId} generatingConcepts={conceptLoading || regenerating} currentSignature={lensSignature}/>} {step === 3 && <ConceptStep state={state} update={update} next={() => go(4)} back={() => go(2)} onRegenerate={generateSynthesizedConcepts} loadingConcepts={conceptLoading} regenerating={regenerating} loadingMessage={arenaLoadingMessages[loadingMessageIndex]}/>} {step === 4 && <DefineStep state={state} update={update} next={() => go(5)} back={() => go(3)}/>} {step === 5 && <ConfirmStep state={state} back={() => go(4)} enter={onComplete}/>}</motion.div></main>
 }
