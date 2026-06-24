@@ -12,7 +12,7 @@ const controls = ['SHAPE', 'CHALLENGE', 'EMPOWER', 'SCOREBOARD']
 const levels = ['MINIMAL', 'GUARDED', 'BALANCED', 'HIGH', 'MAX']
 const conceptFields = ['id', 'name', 'tension', 'action', 'rationale']
 const blank = () => ({
-  id: `${SESSION_PREFIX}${Date.now()}`, createdAt: Date.now(), updatedAt: Date.now(), stage: 1, visionStep: 1, topic: '', grade: '', standards: [], selectedLenses: [], lensContent: [], lensContentSignature: '', lensContentFallback: false, concepts: [], lensSpecificSuggestions: [], selectedConcept: null, regeneratePrompt: '',
+  id: `${SESSION_PREFIX}${Date.now()}`, createdAt: Date.now(), updatedAt: Date.now(), stage: 1, visionStep: 1, topic: '', grade: '', standards: [], selectedLenses: [], lensContent: [], lensContentSignature: '', lensContentFallback: false, concepts: [], synthesizedBatches: [], lensSpecificSuggestions: [], selectedConcept: null, regeneratePrompt: '',
   framing: { audience: '', visible: '', visibleBehaviors: [], otherBehavior: '', duration: '', minutes: '', days: '', minutesPerDay: '', weeks: '', timesPerWeek: '', twist: '', twistNote: '' },
   controls: { SHAPE: 3, CHALLENGE: 3, EMPOWER: 3, SCOREBOARD: 3 },
   faders: Object.fromEntries(toolkit.faders.map(f => [f.id, 3])), selectedMoves: [], generatedMoves: {}, outputBrief: null
@@ -25,10 +25,11 @@ const object = value => value && typeof value === 'object' && !Array.isArray(val
 const sanitizeConcept = raw => {
   const concept = object(raw)
   if (!concept) return null
-  if (!conceptFields.every(field => typeof concept[field] === 'string')) return null
+  const conceptId = typeof concept.id === 'string' && concept.id.trim() ? concept.id : typeof concept.name === 'string' ? concept.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') : ''
+  if (!conceptId || !conceptFields.filter(field => field !== 'id').every(field => typeof concept[field] === 'string')) return null
   if (!Array.isArray(concept.roles) || !concept.roles.every(role => typeof role === 'string')) return null
   return {
-    id: concept.id,
+    id: conceptId,
     name: concept.name,
     tension: concept.tension,
     roles: concept.roles,
@@ -83,6 +84,19 @@ function sanitizeSession(raw) {
     lensContentSignature: text(source.lensContentSignature),
     lensContentFallback: Boolean(source.lensContentFallback),
     concepts: list(source.concepts).map(sanitizeConcept).filter(Boolean),
+    synthesizedBatches: list(source.synthesizedBatches).map((item, index) => {
+      const batch = object(item)
+      if (!batch) return null
+      const concepts = list(batch.concepts).map(sanitizeConcept).filter(Boolean)
+      if (!concepts.length) return null
+      return {
+        id: text(batch.id) || `batch-${index + 1}`,
+        lensIds: list(batch.lensIds).filter(value => typeof value === 'string'),
+        lensNames: list(batch.lensNames).filter(value => typeof value === 'string'),
+        regeneratePrompt: text(batch.regeneratePrompt),
+        concepts,
+      }
+    }).filter(Boolean),
     lensSpecificSuggestions: list(source.lensSpecificSuggestions).map(item => {
       const entry = object(item)
       if (!entry || typeof entry.lensId !== 'string' || typeof entry.lensName !== 'string') return null
@@ -111,6 +125,15 @@ function sanitizeSession(raw) {
     selectedMoves: list(source.selectedMoves).filter(item => typeof item === 'string'),
     generatedMoves: sanitizeGeneratedMoves(source.generatedMoves),
     outputBrief: sanitizeOutputBrief(source.outputBrief),
+  }
+  if (!safeState.synthesizedBatches.length && safeState.concepts.length) {
+    safeState.synthesizedBatches = [{
+      id: 'legacy-batch',
+      lensIds: safeState.selectedLenses,
+      lensNames: [],
+      regeneratePrompt: safeState.regeneratePrompt,
+      concepts: safeState.concepts,
+    }]
   }
   return safeState
 }

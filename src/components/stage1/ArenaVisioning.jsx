@@ -24,6 +24,7 @@ const downstreamVisionReset = {
   lensContentSignature: '',
   lensContentFallback: false,
   concepts: [],
+  synthesizedBatches: [],
   lensSpecificSuggestions: [],
   selectedConcept: null,
   regeneratePrompt: '',
@@ -31,6 +32,13 @@ const downstreamVisionReset = {
 
 const titleCase = value => value.charAt(0).toUpperCase() + value.slice(1)
 const lensLabel = id => lenses.find(lens => lens.id === id)?.name.replace('The ', '').replace(' Lens', '') || titleCase(id)
+const formatLensCombination = lensNames => {
+  if (!lensNames.length) return 'your selected lenses'
+  if (lensNames.length === 1) return lensNames[0]
+  if (lensNames.length === 2) return `${lensNames[0]} and ${lensNames[1]}`
+  return `${lensNames.slice(0, -1).join(', ')}, and ${lensNames.at(-1)}`
+}
+const conceptIdFromName = name => (name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || `concept-${Date.now()}`
 
 const buildFallbackLensContent = (topic, grade) => {
   const arena = topic || 'this arena'
@@ -84,7 +92,6 @@ const buildSynthesizedLocalConcepts = (topic, grade, selectedLensDetails, regene
   const secondary = selectedLensDetails[1]?.id || primary
   const focus = selectedLensDetails.map(lens => lensLabel(lens.id)).join(' + ') || 'Tension'
   const resonanceNote = regeneratePrompt.trim()
-  const resonance = resonanceNote ? ` The next round leans into this direction from the teacher: ${regeneratePrompt.trim()}.` : ''
   const emphasis = resonanceNote.toLowerCase()
   const regeneratedNames = emphasis.includes('interdependent') ? [`${arena}: Interdependence on the Line`, `Interdependent ${arena}`, `${arena}: No Solo Route`] : emphasis.includes('public') ? [`${arena}: Public Consequence`, `Under the Public Eye: ${arena}`, `${arena}: Visible Fallout`] : emphasis.includes('information') ? [`${arena}: Missing Pieces`, `Partial Signal: ${arena}`, `${arena}: Incomplete Picture`] : resonanceNote ? [`${arena}: Second Signal`, `Reframing ${arena}`, `${arena}: Another Angle`] : null
 
@@ -98,33 +105,36 @@ const buildSynthesizedLocalConcepts = (topic, grade, selectedLensDetails, regene
   const names = regeneratedNames || naming
 
   const secondaryLabel = lensLabel(secondary).toLowerCase()
+  const lensProvocations = selectedLensDetails.map(lens => lens.provocation).filter(Boolean)
+  const combinedExample = selectedLensDetails.map(lens => lens.example).filter(Boolean).join(' ')
+  const resonanceTag = resonanceNote ? ` The teacher wants the next round to lean toward: ${resonanceNote}.` : ''
 
   return [
     {
       id: `${primary}-synth-1`,
       name: names[0],
-      tension: `${learners} must act while the core ${lensLabel(primary).toLowerCase()} is still unsettled, and every option strengthens one consequence while worsening another.${resonance}`,
-      roles: ['Decision makers', 'Affected stakeholders', 'Pattern spotters'],
-      action: resonanceNote ? `Frame the problem, commit publicly, and defend that choice as the ${focus.toLowerCase()} pressures tighten around ${resonanceNote.toLowerCase()}.` : `Frame the problem, choose a direction, and defend that choice as the ${focus.toLowerCase()} pressures tighten.`,
-      rationale: `${focus} makes the content usable because learners cannot stay outside the problem; they have to reason from within it.`,
+      tension: `${learners} inherit a live conflict shaped by ${focus}. ${lensProvocations[0] || `The core ${lensLabel(primary).toLowerCase()} is unsettled`}, and every serious option helps one value, person, or outcome while destabilizing another.${resonanceTag}`,
+      roles: selectedLensDetails.length > 1 ? ['Primary decision makers', 'People affected by the outcome', 'Observers tracking consequences'] : ['Primary decision makers', 'Affected community', 'Signal readers'],
+      action: `Learners step into the arena, take a position, and make an irreversible choice before the full picture is comfortable. ${combinedExample}`.trim(),
+      rationale: `${focus} turns the content into terrain instead of topic. Learners have to interpret competing pressures, justify a course of action, and live with the consequences their own judgment creates.`,
     },
     {
       id: `${primary}-synth-2`,
       name: names[1],
-      tension: `${learners} enter the system from different positions, but a ${secondaryLabel} shift means no single viewpoint is enough to see the whole arena.`,
+      tension: `${learners} enter the system from different positions, but a ${secondaryLabel} shift means no single viewpoint, role, or resource stream is enough to understand what should happen next. The arena keeps moving as each group acts on partial information.${resonanceTag}`,
       roles: resonanceNote ? ['Interdependent role holders', 'Negotiators', 'Signal carriers'] : ['Role holders', 'Negotiators', 'Recorders of consequence'],
-      action: resonanceNote ? 'Trade incomplete information, rely on one another’s signals, and revise decisions as the system responds.' : 'Compare perspectives, trade information, and revise decisions as the system responds.',
-      rationale: `This arena turns knowledge into judgment because learners must reconcile competing positions instead of repeating one correct answer.`,
+      action: resonanceNote ? 'Trade incomplete information, rely on one another’s signals, and revise decisions as the system responds.' : 'Compare perspectives, exchange incomplete information, and revise decisions as the system pushes back on their first assumptions.',
+      rationale: `This arena creates thinking because learners cannot solve it privately or passively. They have to reconcile perspective, sequence, and consequence in real time, which makes judgment visible instead of hidden.`,
     },
     {
       id: `${primary}-synth-3`,
       name: names[2],
-      tension: `${learners} face a consequential choice under conditions shaped by ${selectedLensDetails.map(lens => lensLabel(lens.id).toLowerCase()).join(', ')}, so hesitation and overconfidence both carry a cost.`,
+      tension: `${learners} face a consequential choice under conditions shaped by ${selectedLensDetails.map(lens => lensLabel(lens.id).toLowerCase()).join(', ')}, so both hesitation and overconfidence carry a cost. What is missing matters as much as what is visible.${resonanceTag}`,
       roles: ['Investigators', 'Advisers', 'Public audience'],
-      action: resonanceNote ? 'Notice what is missing, commit to a recommendation that others must rely on, and respond when the incomplete picture shifts the terrain.' : 'Notice what is missing, commit to a recommendation, and respond when new information changes the terrain.',
-      rationale: `${focus} keeps the arena from flattening into recall: learners have to interpret, prioritize, and adapt.`,
+      action: resonanceNote ? 'Notice what is missing, commit to a recommendation that others must rely on, and respond when the incomplete picture shifts the terrain.' : 'Notice what is missing, commit to a recommendation others must act on, and adapt when new evidence changes what the arena demands.',
+      rationale: `${focus} keeps the arena from flattening into recall. Learners have to decide what counts as useful evidence, what can wait, and what must be acted on before certainty arrives.`,
     },
-  ]
+  ].map(concept => ({ ...concept, id: concept.id || conceptIdFromName(concept.name) }))
 }
 
 const buildLensSpecificLocalConcept = (topic, grade, lens) => ({
@@ -134,6 +144,11 @@ const buildLensSpecificLocalConcept = (topic, grade, lens) => ({
   roles: ['Primary actors', 'Those affected', 'Signal readers'],
   action: 'Step into the seeded situation, make a consequential choice, and adjust when the implications become visible.',
   rationale: `Because this concept is anchored directly to the ${lensLabel(lens.id).toLowerCase()} example, the content becomes something learners must navigate rather than merely describe.`,
+})
+
+const normalizeConcept = (concept, fallbackId) => ({
+  ...concept,
+  id: concept?.id || conceptIdFromName(concept?.name) || fallbackId,
 })
 
 function StepHeader({ step, title, children }) {
@@ -160,8 +175,6 @@ function LensStep({ state, update, back, onGenerate, onBuildAround, loadingExamp
   const content = lenses.map(lens => ({ ...lens, ...(contentMap.get(lens.id) || {}) }))
   const toggle = id => update({
     selectedLenses: state.selectedLenses.includes(id) ? state.selectedLenses.filter(item => item !== id) : [...state.selectedLenses, id],
-    concepts: [],
-    selectedConcept: null,
     regeneratePrompt: '',
   })
 
@@ -182,6 +195,7 @@ function ConceptStep({ state, update, next, back, onRegenerate, loadingConcepts,
   const choose = concept => update({ selectedConcept: concept })
   const lensSpecific = state.lensSpecificSuggestions || []
   const hasLensSpecific = lensSpecific.length > 0
+  const synthesizedBatches = state.synthesizedBatches?.length ? state.synthesizedBatches : state.concepts.length ? [{ id: 'current-batch', lensIds: state.selectedLenses, lensNames: state.selectedLenses.map(lensLabel), regeneratePrompt: state.regeneratePrompt, concepts: state.concepts }] : []
 
   useEffect(() => {
     setDraft(state.regeneratePrompt || '')
@@ -189,7 +203,7 @@ function ConceptStep({ state, update, next, back, onRegenerate, loadingConcepts,
 
   const submitRegeneration = () => onRegenerate(draft)
 
-  return <><StepHeader step={3} title="Three arenas. One choice.">These are conditions, not lesson plans. Choose the arena with the most productive tension.</StepHeader>{loadingConcepts && !state.concepts.length ? <div className="concept-loading-card">The Gamemaker is thinking…</div> : hasLensSpecific ? <div className="concept-sections"><section className="concept-section"><div className="concept-section-header"><span>LENS-SPECIFIC SUGGESTIONS</span><p>These were shaped directly from the lens examples you chose to build around.</p></div><ConceptCards concepts={lensSpecific.map(item => item.concept)} selectedConcept={state.selectedConcept} choose={choose} prefix="lens-specific"/></section><section className="concept-section"><div className="concept-section-header"><span>SYNTHESIZED ARENA SUGGESTIONS</span><p>These combine your selected lenses into three broader arena directions.</p></div><ConceptCards concepts={state.concepts} selectedConcept={state.selectedConcept} choose={choose} prefix="synthesized"/></section></div> : <ConceptCards concepts={state.concepts} selectedConcept={state.selectedConcept} choose={choose} prefix="synthesized"/>}<div className="regenerate-panel">{open && <label className="regenerate-field">What resonates from the suggestions above, or what direction would you like to take? <small>(Optional — the more you share, the better the next round.)</small><textarea value={draft} onChange={event => setDraft(event.target.value)} placeholder="Lean harder into public stakes. Make the roles more interdependent. Keep the concept but raise the ambiguity…"/></label>}<div className="regenerate-actions">{open && <button className="button ghost small" onClick={() => setOpen(false)} disabled={regenerating}>Cancel</button>}<button className="button ghost" onClick={() => open ? submitRegeneration() : setOpen(true)} disabled={loadingConcepts || regenerating}>{regenerating ? 'The Gamemaker is rethinking the arena…' : 'Regenerate Suggestions'}</button></div></div><div className="vision-actions"><button className="button ghost" onClick={back}>← Try different lenses</button><button className="button" disabled={!state.selectedConcept} onClick={next}>Define This Arena →</button></div></>
+  return <><StepHeader step={3} title="Many arenas. One choice.">These are conditions, not lesson plans. Choose the arena with the most productive tension.</StepHeader>{loadingConcepts && !synthesizedBatches.length ? <div className="concept-loading-card">The Gamemaker is thinking…</div> : <div className="concept-sections">{hasLensSpecific && <section className="concept-section"><div className="concept-section-header"><span>LENS-SPECIFIC SUGGESTIONS</span><p>These were shaped directly from the lens examples you chose to build around.</p></div><ConceptCards concepts={lensSpecific.map(item => item.concept)} selectedConcept={state.selectedConcept} choose={choose} prefix="lens-specific"/></section>}{synthesizedBatches.map((batch, index) => <section className="concept-section" key={batch.id}><div className="concept-section-header"><span>{index === 0 ? 'SYNTHESIZED ARENA SUGGESTIONS' : `SYNTHESIZED ARENA SUGGESTIONS / ROUND ${index + 1}`}</span><p>These combine your selected lenses ({formatLensCombination(batch.lensNames?.length ? batch.lensNames : batch.lensIds.map(lensLabel))}) into three broader arena directions.</p></div><ConceptCards concepts={batch.concepts} selectedConcept={state.selectedConcept} choose={choose} prefix={batch.id}/></section>)}</div>}<div className="regenerate-panel">{open && <label className="regenerate-field">What resonates from the suggestions above, or what direction would you like to take? <small>(Optional — the more you share, the better the next round.)</small><textarea value={draft} onChange={event => setDraft(event.target.value)} placeholder="Lean harder into public stakes. Make the roles more interdependent. Keep the concept but raise the ambiguity…"/></label>}<div className="regenerate-actions">{open && <button className="button ghost small" onClick={() => setOpen(false)} disabled={regenerating}>Cancel</button>}<button className="button ghost" onClick={() => open ? submitRegeneration() : setOpen(true)} disabled={loadingConcepts || regenerating || !synthesizedBatches.length}>{regenerating ? 'The Gamemaker is rethinking the arena…' : 'Regenerate Suggestions'}</button></div></div><div className="vision-actions"><button className="button ghost" onClick={back}>← Try different lenses</button><button className="button" disabled={!state.selectedConcept} onClick={next}>Define This Arena →</button></div></>
 }
 
 function DefineStep({ state, update, next, back }) {
@@ -220,6 +234,7 @@ export default function ArenaVisioning({ state, setState, onComplete }) {
   const lensSignature = `${state.topic.trim()}::${state.grade}`
 
   const visibleLensContent = useMemo(() => state.lensContentSignature === lensSignature ? state.lensContent : [], [state.lensContent, state.lensContentSignature, lensSignature])
+  const synthesizedBatches = state.synthesizedBatches || []
 
   useEffect(() => {
     if (step !== 2 || !state.topic.trim() || !state.grade) return
@@ -249,6 +264,7 @@ export default function ArenaVisioning({ state, setState, onComplete }) {
 
   const generateSynthesizedConcepts = async regeneratePrompt => {
     const selectedLensDetails = buildSelectedLensDetails(state.selectedLenses, visibleLensContent)
+    const lensNames = selectedLensDetails.map(item => lensLabel(item.id))
     const fallback = { concepts: buildSynthesizedLocalConcepts(state.topic, state.grade, selectedLensDetails, regeneratePrompt) }
     const context = {
       ...buildArenaContext({ ...state, regeneratePrompt }),
@@ -257,13 +273,27 @@ export default function ArenaVisioning({ state, setState, onComplete }) {
     }
 
     if (step !== 3) go(3)
-    update({ concepts: [], selectedConcept: null, regeneratePrompt })
+    const currentBatch = synthesizedBatches.at(-1)
+    const selectedConceptId = state.selectedConcept?.id
+    const selectedInCurrentBatch = currentBatch?.concepts?.some(concept => concept.id === selectedConceptId)
+    update({ concepts: currentBatch?.concepts || [], regeneratePrompt })
     regeneratePrompt ? setRegenerating(true) : setConceptLoading(true)
     const data = await request('concepts', context, fallback, { silentFallback: true, hardFailureMessage: "The arena didn't take shape this time. Try adjusting your lenses and generating again." })
+    const normalizedConcepts = data.concepts.map((concept, index) => normalizeConcept(concept, `synthesized-${index + 1}`))
+    const nextBatch = {
+      id: regeneratePrompt ? currentBatch?.id || `batch-${Date.now()}` : `batch-${Date.now()}`,
+      lensIds: selectedLensDetails.map(item => item.id),
+      lensNames,
+      regeneratePrompt,
+      concepts: normalizedConcepts,
+    }
     setState(current => ({
       ...current,
-      concepts: data.concepts,
-      selectedConcept: null,
+      concepts: normalizedConcepts,
+      synthesizedBatches: regeneratePrompt
+        ? [...(current.synthesizedBatches || []).slice(0, -1), nextBatch]
+        : [...(current.synthesizedBatches || []), nextBatch],
+      selectedConcept: regeneratePrompt && selectedInCurrentBatch ? null : current.selectedConcept,
       regeneratePrompt,
       lensSpecificSuggestions: current.lensSpecificSuggestions || [],
     }))
@@ -290,7 +320,7 @@ export default function ArenaVisioning({ state, setState, onComplete }) {
       selectedLenses: nextSelectedLenses,
       lensSpecificSuggestions: [
         ...(current.lensSpecificSuggestions || []).filter(item => item.lensId !== lens.id),
-        { lensId: lens.id, lensName: lens.name, concept: data.concept },
+        { lensId: lens.id, lensName: lens.name, concept: normalizeConcept(data.concept, `${lens.id}-specific`) },
       ],
     }))
     setBuildingLensId('')
