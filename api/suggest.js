@@ -1,7 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk'
 
 const prompts = {
-  liveSignal: 'Return a three-part reading of the current arena: its specific condition, what that means for these learners, and one concrete thing the teacher should watch for.',
+  liveSignal: 'Return a three-part reading of the current arena: its specific condition, what that means for these learners, and one concrete thing the teacher should watch for. You must use both the dial settings and the fader settings to shape all three parts of the reading.',
+  faderDescriptions: 'Generate all 40 arena-specific fader descriptions in one response: 8 faders and 5 settings each. Each description should sound like it belongs to this exact arena, not a generic template. Keep each one concise but concrete.',
   lenses: 'Generate topic- and grade-specific content for all five fixed lenses: tension, role, stakes, surprise, and constraint.',
   concepts: 'Generate exactly 2 richly developed synthesized arena concepts based on the selected lenses. Use the full text of each selected lens, including both its provocation and its for-example content, not just the lens names. Each concept must feel as fully developed as a lens-specific suggestion: specific central tension, vivid roles, concrete learner action, and a strong explanation of why the design creates thinking. The second concept must be as specific and fully developed as the first. These are conditions, not lesson plans or activities.',
   lensSpecificConcept: 'Generate exactly 1 named arena concept built specifically around the provided seed lens example. Use that example as the core seed, alongside the teacher topic and grade level. The result should feel clearly different from the synthesized set and should still be a condition, not a lesson plan or activity.',
@@ -9,8 +10,8 @@ const prompts = {
   outputBrief: 'Synthesize a Gamemaker Design Brief. Include a coherent Arena Concept and exactly five sections aligned to conditions, constraints, consequential learner choices, observable evidence, and teacher intervention points. Finish with a warm, sharp Gamemaker note of no more than five sentences.',
 }
 
-const modelFor = type => ['concepts', 'lensSpecificConcept', 'outputBrief'].includes(type) ? 'claude-sonnet-4-6' : 'claude-haiku-4-5'
-const maxTokensFor = type => type === 'outputBrief' ? 1800 : type === 'concepts' ? 2400 : type === 'lensSpecificConcept' ? 1200 : type === 'moves' ? 1200 : 900
+const modelFor = type => ['concepts', 'lensSpecificConcept', 'outputBrief', 'faderDescriptions'].includes(type) ? 'claude-sonnet-4-6' : 'claude-haiku-4-5'
+const maxTokensFor = type => type === 'outputBrief' ? 1800 : type === 'concepts' ? 2400 : type === 'faderDescriptions' ? 2200 : type === 'lensSpecificConcept' ? 1200 : type === 'moves' ? 1200 : 900
 
 function parseJSON(value) {
   const cleaned = value.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
@@ -35,7 +36,7 @@ export default async function handler(req, res) {
   const { type, context, schema } = req.body || {}
   if (!prompts[type] || !context || !schema) return res.status(400).json({ error: 'A known call type, full arena context, and response schema are required.' })
 
-  const system = `You are the synthesis engine inside The Gamemaker's Toolkit. Respond to the teacher's actual arena and exact grade level. Never generate a lesson plan, worksheet, script, or materials list. When referring to learners, use the grade level as a descriptor such as "Grade 5 learners" or "Kindergarten learners," never as a quantity or grade band like "3-5 learners." When selected lens details are provided, treat the provocation text and the for-example text as binding creative inputs. Distinct lens combinations should produce meaningfully different arena concepts. For concept generation, depth matters: respond with vivid, concrete, teacher-ready arena descriptions rather than generic placeholders. Return only valid JSON matching the supplied schema—no markdown, preamble, or extra keys.`
+  const system = `You are the synthesis engine inside The Gamemaker's Toolkit. Respond to the teacher's actual arena and exact grade level. Never generate a lesson plan, worksheet, script, or materials list. When referring to learners, use the grade level as a descriptor such as "Grade 5 learners" or "Kindergarten learners," never as a quantity or grade band like "3-5 learners." When selected lens details are provided, treat the provocation text and the for-example text as binding creative inputs. Distinct lens combinations should produce meaningfully different arena concepts. For concept generation, depth matters: respond with vivid, concrete, teacher-ready arena descriptions rather than generic placeholders. For live signal and fader description work, treat both the primary dial settings and the fine-calibration fader settings as design-shaping conditions, not background metadata. Return only valid JSON matching the supplied schema—no markdown, preamble, or extra keys.`
   const prompt = `${prompts[type]}\n\nFULL ARENA CONTEXT:\n${JSON.stringify(context)}\n\nREQUIRED JSON SHAPE:\n${JSON.stringify(schema)}`
 
   try {
@@ -86,6 +87,25 @@ ADDITIONAL REQUIREMENTS FOR THIS CALL:
 - Each move must have a distinct mechanism, not just a different title.
 - Avoid repeating the same implementation pattern across the set.
 - Keep the implementations concrete, teacher-facing, and specific to this arena.`,
+        }],
+      })
+      const raw = message.content.filter(item => item.type === 'text').map(item => item.text).join('\n')
+      return res.status(200).json({ data: parseJSON(raw) })
+    }
+    if (type === 'faderDescriptions') {
+      const message = await anthropic.messages.create({
+        model: modelFor(type),
+        max_tokens: maxTokensFor(type),
+        system,
+        messages: [{
+          role: 'user',
+          content: `${prompt}
+
+ADDITIONAL REQUIREMENTS FOR THIS CALL:
+- Return all 8 faders with settings 1 through 5.
+- Every description must feel arena-specific and topic-specific.
+- Setting 3 cannot be generic "balanced" filler; it still needs to describe what that midpoint feels like in this arena.
+- Keep each description to 1-2 sentences.`,
         }],
       })
       const raw = message.content.filter(item => item.type === 'text').map(item => item.text).join('\n')
