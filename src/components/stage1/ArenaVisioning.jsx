@@ -9,6 +9,7 @@ import { arenaCopy } from '../../config/copy'
 import { useAI } from '../../hooks/useAI'
 import { buildArenaContext } from '../../utils/contextBuilder'
 import { formatGradeDescriptor, gradeOptions } from '../../utils/grades'
+import { sanitizeArenaTitle } from '../../utils/titleCase'
 
 const allStandards = [...commonCore, ...ngss, ...ncss, ...iste]
 
@@ -159,15 +160,12 @@ const buildLensSpecificLocalConcept = (topic, grade, lens) => ({
 
 const normalizeConcept = (concept, fallbackId) => ({
   ...concept,
+  name: sanitizeArenaTitle(concept?.name || ''),
   id: concept?.id || conceptIdFromName(concept?.name) || fallbackId,
 })
 
 function StepHeader({ step, title, children }) {
   return <header className="vision-header"><div className="eyebrow">ARENA VISIONING / 0{step}</div><h1>{title}</h1>{children && <p className="lede">{children}</p>}</header>
-}
-
-function StepNav({ step }) {
-  return <ol className="vision-progress" aria-label="Arena visioning steps">{['Seed', 'Lenses', 'Concept', 'Define', 'Confirm'].map((label, index) => <li key={label} className={step === index + 1 ? 'active' : step > index + 1 ? 'done' : ''}><span>{index + 1}</span><b>{label}</b></li>)}</ol>
 }
 
 function StandardsSelector() {
@@ -244,7 +242,7 @@ function ConfirmStep({ state, back, enter }) {
   return <><StepHeader step={5} title={arenaCopy.ready}>Here is what you have built so far. Read the terrain once, then enter the control room.</StepHeader><section className="confirmation"><div className="confirmation-title"><span>ARENA BRIEF / READY</span><h2>{state.selectedConcept.name}</h2><p>{state.topic} · {state.grade}</p></div><dl><div><dt>Central tension</dt><dd>{state.selectedConcept.tension}</dd></div><div><dt>What learners will do</dt><dd>{state.selectedConcept.action}</dd></div><div><dt>Audience</dt><dd>{state.framing.audience}</dd></div><div><dt>Look for</dt><dd>{[...state.framing.visibleBehaviors, state.framing.otherBehavior].filter(Boolean).join(' · ')}</dd></div><div><dt>Duration</dt><dd>{state.framing.duration}</dd></div><div><dt>Twist protocol</dt><dd>{state.framing.twist}{state.framing.twistNote ? ` — ${state.framing.twistNote}` : ''}</dd></div>{selectedStandards.length > 0 && <div><dt>Standards</dt><dd>{selectedStandards.map(item => item.code).join(' · ')}</dd></div>}</dl></section><div className="vision-actions"><button className="button ghost" onClick={back}>← Adjust the brief</button><button className="button launch" onClick={enter}>{arenaCopy.begin} →</button></div></>
 }
 
-export default function ArenaVisioning({ state, setState, onComplete }) {
+export default function ArenaVisioning({ state, setState, onComplete, stageNav }) {
   const step = state.visionStep || 1
   const { request, error } = useAI(state.id)
   const [lensLoading, setLensLoading] = useState(false)
@@ -362,5 +360,5 @@ export default function ArenaVisioning({ state, setState, onComplete }) {
     setBuildingLensId('')
   }
 
-  return <main className="visioning shell"><StepNav step={step}/>{error && <div className="ai-card">{error}</div>}<motion.div key={step} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .25 }}>{step === 1 && <SeedStep state={state} update={update} next={() => go(2)}/>} {step === 2 && <LensStep state={state} update={update} back={() => go(1)} onGenerate={() => generateSynthesizedConcepts('')} onBuildAround={buildAroundLens} loadingExamples={lensLoading} buildingLensId={buildingLensId} generatingConcepts={conceptLoading || regenerating} currentSignature={lensSignature}/>} {step === 3 && <ConceptStep state={state} update={update} next={() => go(4)} back={() => go(2)} onRegenerate={generateSynthesizedConcepts} loadingConcepts={conceptLoading} regenerating={regenerating} loadingMessage={arenaLoadingMessages[loadingMessageIndex]}/>} {step === 4 && <DefineStep state={state} update={update} next={() => go(5)} back={() => go(3)}/>} {step === 5 && <ConfirmStep state={state} back={() => go(4)} enter={onComplete}/>}</motion.div></main>
+  return <main className="visioning shell">{stageNav}{error && <div className="ai-card">{error}</div>}<motion.div key={step} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .25 }}>{step === 1 && <SeedStep state={state} update={update} next={() => go(2)}/>} {step === 2 && <LensStep state={state} update={update} back={() => go(1)} onGenerate={() => generateSynthesizedConcepts('')} onBuildAround={buildAroundLens} loadingExamples={lensLoading} buildingLensId={buildingLensId} generatingConcepts={conceptLoading || regenerating} currentSignature={lensSignature}/>} {step === 3 && <ConceptStep state={state} update={update} next={() => go(4)} back={() => go(2)} onRegenerate={generateSynthesizedConcepts} loadingConcepts={conceptLoading} regenerating={regenerating} loadingMessage={arenaLoadingMessages[loadingMessageIndex]}/>} {step === 4 && <DefineStep state={state} update={update} next={() => go(5)} back={() => go(3)}/>} {step === 5 && <ConfirmStep state={state} back={() => go(4)} enter={onComplete}/>}</motion.div></main>
 }
